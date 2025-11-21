@@ -93,6 +93,15 @@ public class ZKTecoDevice {
     
     /**
      * Check if socket is in a healthy state for communication
+     * 
+     * A socket is considered healthy when:
+     * - It exists (not null)
+     * - It's not closed
+     * - It's connected
+     * - Input stream is not shut down
+     * - Output stream is not shut down
+     * 
+     * @return true if socket can be used for communication, false otherwise
      */
     private boolean isSocketHealthy() {
         return socket != null && !socket.isClosed() && socket.isConnected() 
