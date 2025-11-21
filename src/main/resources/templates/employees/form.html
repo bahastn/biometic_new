@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Employee Form - ZKTeco Attendance System</title>
+</head>
+<body>
+    <section>
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-person"></i> 
+                        <span th:text="${employee.id != null ? 'Edit Employee' : 'Add New Employee'}">Employee Form</span>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="${employee.id != null ? '/employees/update/' + employee.id : '/employees/save'}" 
+                              th:object="${employee}" 
+                              method="post">
+                            
+                            <div class="mb-3">
+                                <label for="employeeId" class="form-label">Employee ID *</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="employeeId" 
+                                       th:field="*{employeeId}" 
+                                       placeholder="e.g., EMP001"
+                                       required
+                                       th:readonly="${employee.id != null}">
+                                <small class="text-muted">Unique identifier for the employee</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Full Name *</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="name" 
+                                       th:field="*{name}" 
+                                       placeholder="e.g., John Doe"
+                                       required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="department" class="form-label">Department</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="department" 
+                                               th:field="*{department}" 
+                                               placeholder="e.g., IT Department">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="designation" class="form-label">Designation</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="designation" 
+                                               th:field="*{designation}" 
+                                               placeholder="e.g., Software Developer">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="cardNumber" class="form-label">Card Number</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="cardNumber" 
+                                       th:field="*{cardNumber}" 
+                                       placeholder="RFID card number">
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input" 
+                                       id="active" 
+                                       th:field="*{active}">
+                                <label class="form-check-label" for="active">
+                                    Active (Include in device sync)
+                                </label>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a th:href="@{/employees}" class="btn btn-secondary btn-custom">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-success btn-custom">
+                                    <i class="bi bi-save"></i> Save Employee
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-body bg-light">
+                        <h6><i class="bi bi-info-circle"></i> Information</h6>
+                        <ul class="mb-0 small">
+                            <li>Employee ID must be unique and cannot be changed after creation</li>
+                            <li>Only active employees will be synced to devices</li>
+                            <li>Use the Manual Sync page to push employee data to devices</li>
+                            <li>Card number is optional but recommended for RFID-enabled devices</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Manual Sync - ZKTeco Attendance System</title>
+</head>
+<body>
+    <section>
+        <div class="row">
+            <!-- Sync Employees to Device -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-arrow-right-circle"></i> Push Employee to Device
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Sync employee information from database to a specific device</p>
+                        
+                        <form th:action="@{/sync/employee-to-device}" method="post">
+                            <div class="mb-3">
+                                <label for="employeeSelect" class="form-label">Select Employee</label>
+                                <select class="form-select" id="employeeSelect" name="employeeId" required>
+                                    <option value="">-- Choose an employee --</option>
+                                    <option th:each="employee : ${employees}" 
+                                            th:value="${employee.id}" 
+                                            th:text="${employee.employeeId + ' - ' + employee.name}">
+                                        EMP001 - John Doe
+                                    </option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="deviceSelectEmployee" class="form-label">Select Device</label>
+                                <select class="form-select" id="deviceSelectEmployee" name="deviceId" required>
+                                    <option value="">-- Choose a device --</option>
+                                    <option th:each="device : ${devices}" 
+                                            th:value="${device.id}" 
+                                            th:text="${device.deviceName + ' (' + device.ipAddress + ')'}">
+                                        Device 1 (192.168.1.127)
+                                    </option>
+                                </select>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-custom w-100">
+                                <i class="bi bi-arrow-right-circle"></i> Push Employee to Device
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sync All Employees to Device -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <i class="bi bi-arrow-right-square"></i> Push All Employees to Device
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Sync all active employees from database to a specific device</p>
+                        
+                        <form th:action="@{/sync/all-employees-to-device}" method="post">
+                            <div class="mb-3">
+                                <label for="deviceSelectAll" class="form-label">Select Device</label>
+                                <select class="form-select" id="deviceSelectAll" name="deviceId" required>
+                                    <option value="">-- Choose a device --</option>
+                                    <option th:each="device : ${devices}" 
+                                            th:value="${device.id}" 
+                                            th:text="${device.deviceName + ' (' + device.ipAddress + ')'}">
+                                        Device 1 (192.168.1.127)
+                                    </option>
+                                </select>
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                This will push <strong th:text="${#lists.size(employees)}">0</strong> employees to the selected device.
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success btn-custom w-100">
+                                <i class="bi bi-arrow-right-square"></i> Push All Employees to Device
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <!-- Pull Attendance from Device -->
+            <div class="col-md-6 mx-auto">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="bi bi-arrow-left-circle"></i> Pull Attendance from Device
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Manually sync attendance records from device to database</p>
+                        
+                        <form th:action="@{/sync/attendance-from-device}" method="post">
+                            <div class="mb-3">
+                                <label for="deviceSelectAttendance" class="form-label">Select Device</label>
+                                <select class="form-select" id="deviceSelectAttendance" name="deviceId" required>
+                                    <option value="">-- Choose a device --</option>
+                                    <option th:each="device : ${devices}" 
+                                            th:value="${device.id}" 
+                                            th:text="${device.deviceName + ' (' + device.ipAddress + ')'}">
+                                        Device 1 (192.168.1.127)
+                                    </option>
+                                </select>
+                            </div>
+                            
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                Note: Automatic sync is already running in the background. Use this only for immediate sync needs.
+                            </div>
+                            
+                            <button type="submit" class="btn btn-warning btn-custom w-100">
+                                <i class="bi bi-arrow-left-circle"></i> Pull Attendance from Device
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body bg-light">
+                        <h6><i class="bi bi-info-circle"></i> Sync Information</h6>
+                        <ul class="mb-0">
+                            <li><strong>Push Employee to Device:</strong> Uploads a single employee's information (ID, name, card number) to the selected device</li>
+                            <li><strong>Push All Employees:</strong> Uploads all active employees from the database to the selected device</li>
+                            <li><strong>Pull Attendance:</strong> Downloads new attendance records from the device to the database</li>
+                            <li><strong>Automatic Sync:</strong> The system automatically pulls attendance data every minute from all active devices</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>
