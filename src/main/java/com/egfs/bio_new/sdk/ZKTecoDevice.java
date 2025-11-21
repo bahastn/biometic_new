@@ -130,7 +130,7 @@ public class ZKTecoDevice {
             } catch (java.net.SocketException e) {
                 // SocketException with "reset" message often indicates device is in push mode
                 String message = e.getMessage();
-                if (message != null && (message.contains("reset") || message.contains("Reset"))) {
+                if (message != null && message.toLowerCase().contains("reset")) {
                     log.info("Connection reset from {}:{} (attempt {}/{}) - device may be in push mode", 
                             ipAddress, port, attempt, maxRetries);
                 } else {
