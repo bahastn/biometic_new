@@ -46,6 +46,7 @@ public class ZKTecoDevice {
     private static final int CMD_DATA = 1501;
     
     private static final int USHRT_MAX = 65535;
+    private static final int PACKET_HEADER_SIZE = 16; // Size of ZKTeco protocol packet header
     
     public ZKTecoDevice(String ipAddress, int port) {
         this.ipAddress = ipAddress;
@@ -61,6 +62,10 @@ public class ZKTecoDevice {
     
     /**
      * Connect to the device with retry logic
+     * 
+     * This method intentionally blocks the calling thread during retries,
+     * as it's designed for synchronous connection establishment where the
+     * caller expects the method to either succeed or fail after all attempts.
      * 
      * @param maxRetries Maximum number of connection attempts
      * @param retryDelayMs Delay between retries in milliseconds
@@ -81,7 +86,7 @@ public class ZKTecoDevice {
                     try {
                         socket.close();
                     } catch (IOException e) {
-                        // Ignore
+                        log.debug("Error closing existing socket during cleanup: {}", e.getMessage());
                     }
                 }
                 
@@ -448,8 +453,7 @@ public class ZKTecoDevice {
      */
     private byte[] createCommand(int command, byte[] data) throws IOException {
         // Use ByteBuffer for consistent little-endian byte order
-        int headerSize = 16;
-        ByteBuffer buffer = ByteBuffer.allocate(headerSize + data.length).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buffer = ByteBuffer.allocate(PACKET_HEADER_SIZE + data.length).order(ByteOrder.LITTLE_ENDIAN);
         
         // Start marker (2 bytes) - 0x5050
         buffer.putShort((short) 0x5050);
