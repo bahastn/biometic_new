@@ -44,6 +44,15 @@ public class ZKTecoServerListener {
     private static final int MAX_DATA_SIZE = 5 * 1024 * 1024;
     private static final int USHRT_MAX = 65535;
     
+    // Attendance record format constants
+    private static final int ATTENDANCE_RECORD_SIZE = 40; // Size of each attendance record in bytes
+    private static final int USER_ID_OFFSET = 0;
+    private static final int USER_ID_SIZE = 2;
+    private static final int TIMESTAMP_OFFSET = 4;
+    private static final int TIMESTAMP_SIZE = 4;
+    private static final int VERIFY_TYPE_OFFSET = 8;
+    private static final int IN_OUT_STATE_OFFSET = 9;
+    
     // Map to store device connection handlers
     private final ConcurrentHashMap<String, Consumer<List<AttendanceRecord>>> deviceHandlers = new ConcurrentHashMap<>();
     
@@ -340,28 +349,29 @@ public class ZKTecoServerListener {
             byte[] data = new byte[dataSize];
             System.arraycopy(packet, PACKET_HEADER_SIZE, data, 0, dataSize);
             
-            // Each attendance record is typically 40 bytes
-            int recordSize = 40;
-            int recordCount = data.length / recordSize;
+            // Each attendance record has a fixed size
+            int recordCount = data.length / ATTENDANCE_RECORD_SIZE;
             
             for (int i = 0; i < recordCount; i++) {
-                int offset = i * recordSize;
+                int offset = i * ATTENDANCE_RECORD_SIZE;
                 
-                if (offset + recordSize > data.length) {
+                if (offset + ATTENDANCE_RECORD_SIZE > data.length) {
                     break;
                 }
                 
-                // Parse user ID (2 bytes at offset 0)
-                int userId = ByteBuffer.wrap(data, offset, 2).order(ByteOrder.LITTLE_ENDIAN).getShort() & 0xFFFF;
+                // Parse user ID
+                int userId = ByteBuffer.wrap(data, offset + USER_ID_OFFSET, USER_ID_SIZE)
+                        .order(ByteOrder.LITTLE_ENDIAN).getShort() & 0xFFFF;
                 
-                // Parse timestamp (4 bytes at offset 4)
-                long timestamp = ByteBuffer.wrap(data, offset + 4, 4).order(ByteOrder.LITTLE_ENDIAN).getInt() & 0xFFFFFFFFL;
+                // Parse timestamp
+                long timestamp = ByteBuffer.wrap(data, offset + TIMESTAMP_OFFSET, TIMESTAMP_SIZE)
+                        .order(ByteOrder.LITTLE_ENDIAN).getInt() & 0xFFFFFFFFL;
                 
-                // Parse verification type (1 byte at offset 8)
-                int verifyType = data[offset + 8] & 0xFF;
+                // Parse verification type
+                int verifyType = data[offset + VERIFY_TYPE_OFFSET] & 0xFF;
                 
-                // Parse in/out state (1 byte at offset 9)
-                int inOutState = data[offset + 9] & 0xFF;
+                // Parse in/out state
+                int inOutState = data[offset + IN_OUT_STATE_OFFSET] & 0xFF;
                 
                 // Convert timestamp to LocalDateTime
                 LocalDateTime dateTime = LocalDateTime.ofInstant(
