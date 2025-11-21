@@ -47,6 +47,9 @@ public class ZKTecoDevice {
     
     private static final int USHRT_MAX = 65535;
     private static final int PACKET_HEADER_SIZE = 16; // Size of ZKTeco protocol packet header
+    private static final int CONNECTION_TIMEOUT_MS = 5000; // Socket connection timeout
+    private static final int READ_TIMEOUT_MS = 10000; // Socket read timeout
+    private static final int MAX_DATA_SIZE = 5 * 1024 * 1024; // Maximum 5MB data size for safety
     
     public ZKTecoDevice(String ipAddress, int port) {
         this.ipAddress = ipAddress;
@@ -92,8 +95,8 @@ public class ZKTecoDevice {
                 
                 // Create new socket connection
                 socket = new Socket();
-                socket.connect(new java.net.InetSocketAddress(ipAddress, port), 5000);
-                socket.setSoTimeout(10000); // 10 second timeout for read operations
+                socket.connect(new java.net.InetSocketAddress(ipAddress, port), CONNECTION_TIMEOUT_MS);
+                socket.setSoTimeout(READ_TIMEOUT_MS);
                 socket.setKeepAlive(true);
                 socket.setTcpNoDelay(true);
                 
@@ -516,6 +519,13 @@ public class ZKTecoDevice {
             
             // Get data size from header
             int dataSize = ByteBuffer.wrap(header, 12, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+            
+            // Validate data size to prevent memory exhaustion attacks
+            if (dataSize < 0 || dataSize > MAX_DATA_SIZE) {
+                log.error("Invalid data size in reply: {} bytes (max allowed: {} bytes)", 
+                        dataSize, MAX_DATA_SIZE);
+                return null;
+            }
             
             // Read data if any
             byte[] data = new byte[dataSize];
