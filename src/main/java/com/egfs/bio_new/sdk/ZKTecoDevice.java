@@ -92,39 +92,43 @@ public class ZKTecoDevice {
     }
     
     /**
+     * Check if socket is in a healthy state for communication
+     */
+    private boolean isSocketHealthy() {
+        return socket != null && !socket.isClosed() && socket.isConnected() 
+                && !socket.isInputShutdown() && !socket.isOutputShutdown();
+    }
+    
+    /**
      * Disconnect from the device
      */
     public void disconnect() {
-        try {
-            if (socket != null && !socket.isClosed() && socket.isConnected() && !socket.isInputShutdown() && !socket.isOutputShutdown()) {
-                try {
-                    // Send disconnect command only if socket is in a good state
-                    byte[] cmd = createCommand(CMD_EXIT, new byte[0]);
-                    out.write(cmd);
-                    out.flush();
-                } catch (IOException e) {
-                    // Ignore errors when sending disconnect command as connection may already be broken
-                    log.debug("Could not send disconnect command (connection may already be closed): {}", e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            log.debug("Error checking socket state during disconnect: {}", e.getMessage());
-        } finally {
-            // Always clean up resources regardless of socket state
+        if (isSocketHealthy()) {
             try {
-                if (socket != null && !socket.isClosed()) {
-                    socket.close();
-                    log.info("Disconnected from device at {}:{}", ipAddress, port);
-                }
+                // Send disconnect command only if socket is in a good state
+                byte[] cmd = createCommand(CMD_EXIT, new byte[0]);
+                out.write(cmd);
+                out.flush();
             } catch (IOException e) {
-                log.debug("Error closing socket: {}", e.getMessage());
-            } finally {
-                socket = null;
-                out = null;
-                in = null;
-                sessionId = 0;
-                replyNumber = 0;
+                // Ignore errors when sending disconnect command as connection may already be broken
+                log.debug("Could not send disconnect command (connection may already be closed): {}", e.getMessage());
             }
+        }
+        
+        // Always clean up resources regardless of socket state
+        try {
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+                log.info("Disconnected from device at {}:{}", ipAddress, port);
+            }
+        } catch (IOException e) {
+            log.debug("Error closing socket: {}", e.getMessage());
+        } finally {
+            socket = null;
+            out = null;
+            in = null;
+            sessionId = 0;
+            replyNumber = 0;
         }
     }
     
