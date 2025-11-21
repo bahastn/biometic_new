@@ -19,6 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -28,8 +30,8 @@ public class ZKTecoService {
     private final EmployeeRepository employeeRepository;
     private final AttendanceLogRepository attendanceLogRepository;
     
-    // Cache of connected devices
-    private final Map<Long, ZKTecoDevice> deviceConnections = new HashMap<>();
+    // Cache of connected devices - thread-safe for concurrent access
+    private final Map<Long, ZKTecoDevice> deviceConnections = new ConcurrentHashMap<>();
     
     /**
      * Get or create device connection

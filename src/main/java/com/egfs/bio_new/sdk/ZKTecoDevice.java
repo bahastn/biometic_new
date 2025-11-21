@@ -176,7 +176,11 @@ public class ZKTecoDevice {
             byte[] reply = readReply();
             if (reply == null || reply.length < 8) {
                 log.warn("No attendance data received from device");
-                enableDevice();
+                try {
+                    enableDevice();
+                } catch (Exception e) {
+                    log.warn("Failed to re-enable device after empty response", e);
+                }
                 return records;
             }
             
@@ -184,7 +188,11 @@ public class ZKTecoDevice {
             int dataSize = ByteBuffer.wrap(reply, 8, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
             if (dataSize == 0) {
                 log.info("No new attendance records on device");
-                enableDevice();
+                try {
+                    enableDevice();
+                } catch (Exception e) {
+                    log.warn("Failed to re-enable device after no records", e);
+                }
                 return records;
             }
             
@@ -200,13 +208,21 @@ public class ZKTecoDevice {
             }
             
             // Enable device again
-            enableDevice();
+            try {
+                enableDevice();
+            } catch (Exception e) {
+                log.warn("Failed to re-enable device after successful sync", e);
+            }
             
             log.info("Retrieved {} attendance records from device", records.size());
             
         } catch (IOException e) {
             log.error("Error getting attendance records", e);
-            enableDevice();
+            try {
+                enableDevice();
+            } catch (Exception ex) {
+                log.warn("Failed to re-enable device after error", ex);
+            }
         }
         
         return records;
@@ -220,15 +236,14 @@ public class ZKTecoDevice {
             // Disable device during operation
             disableDevice();
             
-            // Prepare user data
-            ByteArrayOutputStream userDataStream = new ByteArrayOutputStream();
-            DataOutputStream userOut = new DataOutputStream(userDataStream);
+            // Prepare user data using ByteBuffer for proper little-endian byte order
+            ByteBuffer buffer = ByteBuffer.allocate(100).order(ByteOrder.LITTLE_ENDIAN);
             
-            // User ID (2 bytes)
-            userOut.writeShort(Integer.reverseBytes(userId) >> 16);
+            // User ID (2 bytes, little-endian)
+            buffer.putShort((short) userId);
             
             // Privilege (1 byte): 0=User, 14=Admin
-            userOut.writeByte(privilege);
+            buffer.put((byte) privilege);
             
             // Password (8 bytes)
             byte[] passwordBytes = new byte[8];
@@ -236,7 +251,7 @@ public class ZKTecoDevice {
                 byte[] pwdBytes = password.getBytes();
                 System.arraycopy(pwdBytes, 0, passwordBytes, 0, Math.min(pwdBytes.length, 8));
             }
-            userOut.write(passwordBytes);
+            buffer.put(passwordBytes);
             
             // Name (28 bytes, null-terminated)
             byte[] nameBytes = new byte[28];
@@ -244,21 +259,23 @@ public class ZKTecoDevice {
                 byte[] nmBytes = name.getBytes("UTF-8");
                 System.arraycopy(nmBytes, 0, nameBytes, 0, Math.min(nmBytes.length, 27));
             }
-            userOut.write(nameBytes);
+            buffer.put(nameBytes);
             
-            // Card number (4 bytes)
-            userOut.writeInt(Integer.reverseBytes(cardNumber));
+            // Card number (4 bytes, little-endian)
+            buffer.putInt(cardNumber);
             
             // Group (1 byte)
-            userOut.writeByte(0);
+            buffer.put((byte) 0);
             
-            // Timezone (2 bytes)
-            userOut.writeShort(0);
+            // Timezone (2 bytes, little-endian)
+            buffer.putShort((short) 0);
             
-            // UID (4 bytes) - User ID again
-            userOut.writeInt(Integer.reverseBytes(userId));
+            // UID (4 bytes, little-endian) - User ID again
+            buffer.putInt(userId);
             
-            byte[] userData = userDataStream.toByteArray();
+            byte[] userData = new byte[buffer.position()];
+            buffer.rewind();
+            buffer.get(userData);
             
             // Send command
             byte[] cmd = createCommand(CMD_SET_USER, userData);
@@ -269,7 +286,11 @@ public class ZKTecoDevice {
             byte[] reply = readReply();
             
             // Enable device again
-            enableDevice();
+            try {
+                enableDevice();
+            } catch (Exception e) {
+                log.warn("Failed to re-enable device after setting user", e);
+            }
             
             boolean success = reply != null;
             if (success) {
@@ -282,7 +303,11 @@ public class ZKTecoDevice {
             
         } catch (IOException e) {
             log.error("Error setting user on device", e);
-            enableDevice();
+            try {
+                enableDevice();
+            } catch (Exception ex) {
+                log.warn("Failed to re-enable device after error", ex);
+            }
             return false;
         }
     }
