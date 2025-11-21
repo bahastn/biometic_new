@@ -142,8 +142,9 @@ public class ZKTecoDevice {
                     Thread.sleep(retryDelayMs);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    log.warn("Interrupted while waiting to retry connection");
-                    break;
+                    log.warn("Interrupted while waiting to retry connection - aborting");
+                    // Resources already cleaned up by disconnect() call above
+                    return false;
                 }
             }
         }
