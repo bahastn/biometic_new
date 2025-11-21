@@ -8,11 +8,13 @@ import com.egfs.bio_new.repository.DeviceRepository;
 import com.egfs.bio_new.repository.EmployeeRepository;
 import com.egfs.bio_new.sdk.AttendanceRecord;
 import com.egfs.bio_new.sdk.ZKTecoDevice;
+import com.egfs.bio_new.sdk.ZKTecoServerListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,9 +31,26 @@ public class ZKTecoService {
     private final DeviceRepository deviceRepository;
     private final EmployeeRepository employeeRepository;
     private final AttendanceLogRepository attendanceLogRepository;
+    private final ZKTecoServerListener serverListener;
     
     // Cache of connected devices - thread-safe for concurrent access
     private final Map<Long, ZKTecoDevice> deviceConnections = new ConcurrentHashMap<>();
+    
+    /**
+     * Register all active devices with the server listener on startup
+     */
+    @PostConstruct
+    public void registerDevices() {
+        try {
+            List<Device> activeDevices = deviceRepository.findByActive(true);
+            for (Device device : activeDevices) {
+                registerDeviceWithServerListener(device);
+            }
+            log.info("Registered {} active devices with server listener", activeDevices.size());
+        } catch (Exception e) {
+            log.error("Error registering devices with server listener", e);
+        }
+    }
     
     /**
      * Get or create device connection
@@ -53,6 +72,9 @@ public class ZKTecoService {
             log.info("Attempting to connect to device: {} at {}:{}", 
                     device.getDeviceName(), device.getIpAddress(), device.getPort());
             
+            // Register device with server listener for push mode
+            registerDeviceWithServerListener(device);
+            
             ZKTecoDevice zkDevice = getDeviceConnection(device);
             boolean connected = zkDevice.connect();
             
@@ -65,7 +87,8 @@ public class ZKTecoService {
             } else {
                 device.setConnected(false);
                 deviceRepository.save(device);
-                log.error("Failed to connect to device: {}", device.getDeviceName());
+                log.info("Failed to connect in pull mode to device: {} - device may be in push mode, waiting for data...", device.getDeviceName());
+                // Even if pull mode fails, keep device registered for push mode
                 return false;
             }
         } catch (Exception e) {
@@ -82,6 +105,9 @@ public class ZKTecoService {
     public void disconnectDevice(Device device) {
         try {
             log.info("Disconnecting from device: {}", device.getDeviceName());
+            
+            // Unregister from server listener
+            unregisterDeviceFromServerListener(device);
             
             ZKTecoDevice zkDevice = deviceConnections.get(device.getId());
             if (zkDevice != null) {
@@ -259,6 +285,80 @@ public class ZKTecoService {
         } catch (Exception e) {
             log.error("Error testing connection to {}:{}", ipAddress, port, e);
             return false;
+        }
+    }
+    
+    /**
+     * Register a device with the server listener for push mode
+     */
+    private void registerDeviceWithServerListener(Device device) {
+        serverListener.registerDeviceHandler(device.getIpAddress(), records -> {
+            processAttendanceRecordsFromPush(device, records);
+        });
+        log.debug("Registered device {} ({}) with server listener", device.getDeviceName(), device.getIpAddress());
+    }
+    
+    /**
+     * Unregister a device from the server listener
+     */
+    private void unregisterDeviceFromServerListener(Device device) {
+        serverListener.unregisterDeviceHandler(device.getIpAddress());
+        log.debug("Unregistered device {} ({}) from server listener", device.getDeviceName(), device.getIpAddress());
+    }
+    
+    /**
+     * Process attendance records received from device push
+     */
+    @Transactional
+    public void processAttendanceRecordsFromPush(Device device, List<AttendanceRecord> records) {
+        try {
+            log.info("Processing {} pushed attendance records from device: {}", records.size(), device.getDeviceName());
+            
+            int newRecordsCount = 0;
+            
+            for (AttendanceRecord record : records) {
+                try {
+                    // Find employee by employee ID
+                    Employee employee = employeeRepository.findByEmployeeId(String.valueOf(record.getUserId()))
+                            .orElse(null);
+                    
+                    if (employee == null) {
+                        log.warn("Employee not found for user ID: {} - skipping record", record.getUserId());
+                        continue;
+                    }
+                    
+                    // Check if this attendance record already exists to avoid duplicates
+                    boolean exists = attendanceLogRepository.existsByEmployeeAndPunchTimeAndDevice(
+                            employee, record.getPunchTime(), device);
+                    
+                    if (!exists) {
+                        AttendanceLog attendanceLog = new AttendanceLog();
+                        attendanceLog.setEmployee(employee);
+                        attendanceLog.setDevice(device);
+                        attendanceLog.setPunchTime(record.getPunchTime());
+                        attendanceLog.setVerifyMode(record.getVerifyTypeString());
+                        attendanceLog.setPunchType(record.getInOutStateString());
+                        
+                        attendanceLogRepository.save(attendanceLog);
+                        newRecordsCount++;
+                        log.debug("Saved pushed attendance record for employee {} at {}", 
+                                employee.getEmployeeId(), record.getPunchTime());
+                    }
+                } catch (Exception e) {
+                    log.error("Error processing pushed attendance record for user {}", record.getUserId(), e);
+                }
+            }
+            
+            // Update device last sync time
+            device.setLastSyncTime(LocalDateTime.now());
+            device.setConnected(true);
+            deviceRepository.save(device);
+            
+            log.info("Successfully processed {} new pushed attendance records from device: {}", 
+                    newRecordsCount, device.getDeviceName());
+            
+        } catch (Exception e) {
+            log.error("Error processing pushed attendance records from device: {}", device.getDeviceName(), e);
         }
     }
 }
