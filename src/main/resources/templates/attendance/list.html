@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Attendance Logs - ZKTeco Attendance System</title>
+</head>
+<body>
+    <section>
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-clock-history"></i> All Attendance Records
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${#lists.isEmpty(attendanceLogs)}" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                            <p class="mt-2">No attendance records found</p>
+                            <p class="small">Attendance records will appear here once employees start punching on the devices</p>
+                        </div>
+                        <div th:unless="${#lists.isEmpty(attendanceLogs)}" class="table-responsive">
+                            <table class="table table-hover table-custom">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Employee ID</th>
+                                        <th>Employee Name</th>
+                                        <th>Department</th>
+                                        <th>Punch Time</th>
+                                        <th>Type</th>
+                                        <th>Verify Mode</th>
+                                        <th>Device</th>
+                                        <th>Synced At</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="log, iterStat : ${attendanceLogs}">
+                                        <td th:text="${iterStat.count}">1</td>
+                                        <td th:text="${log.employee.employeeId}">EMP001</td>
+                                        <td th:text="${log.employee.name}">John Doe</td>
+                                        <td th:text="${log.employee.department ?: 'N/A'}">IT</td>
+                                        <td th:text="${#temporals.format(log.punchTime, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01 09:00:00</td>
+                                        <td>
+                                            <span th:if="${log.punchType == 'IN'}" class="badge bg-success badge-custom">
+                                                <i class="bi bi-box-arrow-in-right"></i> IN
+                                            </span>
+                                            <span th:if="${log.punchType == 'OUT'}" class="badge bg-danger badge-custom">
+                                                <i class="bi bi-box-arrow-right"></i> OUT
+                                            </span>
+                                            <span th:if="${log.punchType == null}" class="badge bg-secondary badge-custom">--</span>
+                                        </td>
+                                        <td>
+                                            <span th:if="${log.verifyMode == 0}" class="badge bg-info badge-custom">
+                                                <i class="bi bi-key"></i> Password
+                                            </span>
+                                            <span th:if="${log.verifyMode == 1}" class="badge bg-primary badge-custom">
+                                                <i class="bi bi-fingerprint"></i> Fingerprint
+                                            </span>
+                                            <span th:if="${log.verifyMode == 2}" class="badge bg-warning badge-custom">
+                                                <i class="bi bi-credit-card"></i> Card
+                                            </span>
+                                            <span th:if="${log.verifyMode == null}" class="badge bg-secondary badge-custom">N/A</span>
+                                        </td>
+                                        <td th:text="${log.device != null ? log.device.deviceName : 'N/A'}">Device 1</td>
+                                        <td th:text="${#temporals.format(log.syncedAt, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01 09:00:05</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body bg-light">
+                        <h6><i class="bi bi-info-circle"></i> Attendance Information</h6>
+                        <ul class="mb-0">
+                            <li><strong>Punch Time:</strong> The actual time when the employee punched on the device</li>
+                            <li><strong>Synced At:</strong> The time when this record was synced to the database</li>
+                            <li><strong>Verify Mode:</strong> The authentication method used (Fingerprint, Card, or Password)</li>
+                            <li><strong>Real-time Sync:</strong> The system automatically syncs attendance every minute from all active devices</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

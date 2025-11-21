@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Device Form - ZKTeco Attendance System</title>
+</head>
+<body>
+    <section>
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-hdd-network"></i> 
+                        <span th:text="${device.id != null ? 'Edit Device' : 'Add New Device'}">Device Form</span>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="${device.id != null ? '/devices/update/' + device.id : '/devices/save'}" 
+                              th:object="${device}" 
+                              method="post">
+                            
+                            <div class="mb-3">
+                                <label for="deviceName" class="form-label">Device Name *</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="deviceName" 
+                                       th:field="*{deviceName}" 
+                                       placeholder="e.g., Main Entrance Device"
+                                       required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="ipAddress" class="form-label">IP Address *</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="ipAddress" 
+                                               th:field="*{ipAddress}" 
+                                               placeholder="e.g., 192.168.1.127"
+                                               pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                                               required>
+                                        <small class="text-muted">Format: xxx.xxx.xxx.xxx (each number 0-255)</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="port" class="form-label">Port *</label>
+                                        <input type="number" 
+                                               class="form-control" 
+                                               id="port" 
+                                               th:field="*{port}" 
+                                               placeholder="4370"
+                                               min="1"
+                                               max="65535"
+                                               required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="location" class="form-label">Location</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="location" 
+                                       th:field="*{location}" 
+                                       placeholder="e.g., Main Office - Ground Floor">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="serialNumber" class="form-label">Serial Number</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="serialNumber" 
+                                       th:field="*{serialNumber}" 
+                                       placeholder="Device serial number">
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input" 
+                                       id="active" 
+                                       th:field="*{active}">
+                                <label class="form-check-label" for="active">
+                                    Active (Enable this device for sync)
+                                </label>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a th:href="@{/devices}" class="btn btn-secondary btn-custom">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary btn-custom">
+                                    <i class="bi bi-save"></i> Save Device
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-body bg-light">
+                        <h6><i class="bi bi-info-circle"></i> Configuration Help</h6>
+                        <ul class="mb-0 small">
+                            <li>Make sure the device is on the same network as this application</li>
+                            <li>Default port for ZKTeco devices is usually 4370</li>
+                            <li>You can test the connection after saving by clicking the "Connect" button on the device list</li>
+                            <li>Only active devices will be included in automatic sync</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

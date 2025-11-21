@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::section})}">
+<head>
+    <title>Employee Management - ZKTeco Attendance System</title>
+</head>
+<body>
+    <section>
+        <div class="row mb-3">
+            <div class="col-12">
+                <a th:href="@{/employees/new}" class="btn btn-success btn-custom">
+                    <i class="bi bi-person-plus"></i> Add New Employee
+                </a>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-people"></i> All Employees
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${#lists.isEmpty(employees)}" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                            <p class="mt-2">No employees added yet</p>
+                            <a th:href="@{/employees/new}" class="btn btn-success btn-custom">
+                                <i class="bi bi-person-plus"></i> Add Your First Employee
+                            </a>
+                        </div>
+                        <div th:unless="${#lists.isEmpty(employees)}" class="table-responsive">
+                            <table class="table table-hover table-custom">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Employee ID</th>
+                                        <th>Name</th>
+                                        <th>Department</th>
+                                        <th>Designation</th>
+                                        <th>Card Number</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="employee, iterStat : ${employees}">
+                                        <td th:text="${iterStat.count}">1</td>
+                                        <td th:text="${employee.employeeId}">EMP001</td>
+                                        <td th:text="${employee.name}">John Doe</td>
+                                        <td th:text="${employee.department ?: 'N/A'}">IT</td>
+                                        <td th:text="${employee.designation ?: 'N/A'}">Developer</td>
+                                        <td th:text="${employee.cardNumber ?: 'N/A'}">12345</td>
+                                        <td>
+                                            <span th:if="${employee.active}" class="badge bg-success badge-custom">Active</span>
+                                            <span th:unless="${employee.active}" class="badge bg-secondary badge-custom">Inactive</span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a th:href="@{/employees/edit/{id}(id=${employee.id})}" 
+                                                   class="btn btn-primary" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a th:href="@{/employees/delete/{id}(id=${employee.id})}" 
+                                                   class="btn btn-danger" 
+                                                   onclick="return confirm('Are you sure you want to delete this employee?')" 
+                                                   title="Delete">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>
