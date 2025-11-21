@@ -142,10 +142,26 @@ http://192.168.1.109:8081/
 
 ## Real-time Synchronization
 
-The application automatically syncs attendance data from all active devices every 60 seconds. You can:
-- Enable/disable automatic sync in `application.properties`
-- Adjust the sync interval (default: 60000ms = 60 seconds)
-- Monitor sync status on the dashboard
+The application automatically syncs attendance data from all active devices every 60 seconds using a custom TCP/IP implementation of the ZKTeco protocol. 
+
+### How It Works:
+1. **Automatic Sync**: The scheduler connects to each active device and retrieves new attendance records
+2. **Connection Pooling**: Device connections are cached for efficiency
+3. **Duplicate Prevention**: Records are checked against existing data to prevent duplicates
+4. **Employee Matching**: Attendance records are matched to employees by employee ID
+5. **Data Parsing**: Raw device data is parsed into structured attendance logs
+
+### Configuration:
+- Enable/disable automatic sync in `application.properties` with `zkteco.sync.enabled`
+- Adjust the sync interval with `zkteco.sync.interval` (default: 60000ms = 60 seconds)
+- Monitor sync status and last sync time on the dashboard
+
+### Protocol Details:
+The application uses direct TCP/IP socket communication with ZKTeco devices on port 4370 (default). It implements:
+- Device connection handshake with session management
+- Command/response packet structure with checksums
+- Attendance data retrieval and parsing
+- Employee data push to devices
 
 ## Network Requirements
 
@@ -171,9 +187,12 @@ The tests use an in-memory H2 database and don't require a running PostgreSQL in
 
 ### Device Connection Issues
 - Verify the device is powered on and connected to the network
-- Check the IP address and port are correct
-- Ensure firewall rules allow communication
+- Check the IP address and port are correct (default port: 4370)
+- Ensure firewall rules allow TCP communication on the device port
 - Test connectivity: `ping <device-ip>`
+- Check device logs - the application now uses real TCP/IP communication
+- Ensure the device firmware supports network communication (not just USB)
+- Verify the device is not in sleep mode or standby
 
 ### Application Won't Start
 - Check if port 8081 is already in use
@@ -188,6 +207,9 @@ src/main/java/com/egfs/bio_new/
 ├── entity/            # JPA entities (Device, Employee, AttendanceLog)
 ├── repository/        # Spring Data JPA repositories
 ├── service/           # Business logic services
+├── sdk/               # ZKTeco device SDK implementation
+│   ├── ZKTecoDevice.java      # TCP/IP device communication
+│   └── AttendanceRecord.java  # Data transfer object
 └── BioNewApplication.java  # Main application class
 
 src/main/resources/
@@ -200,7 +222,7 @@ src/main/resources/
 └── application.properties  # Application configuration
 
 lib/
-└── ZKFingerReader.jar  # ZKTeco SDK library
+└── ZKFingerReader.jar  # Legacy fingerprint SDK (not used for network devices)
 ```
 
 ## API Endpoints
