@@ -142,32 +142,86 @@ http://192.168.1.109:8081/
 
 ## Real-time Synchronization
 
-The application automatically syncs attendance data from all active devices every 60 seconds using a custom TCP/IP implementation of the ZKTeco protocol. 
+The application supports **TWO modes** for data synchronization:
 
-### How It Works:
+### 1. Pull Mode (Default Polling)
+The application automatically syncs attendance data from all active devices every 60 seconds using a custom TCP/IP implementation of the ZKTeco protocol.
+
+**How It Works:**
 1. **Automatic Sync**: The scheduler connects to each active device and retrieves new attendance records
 2. **Connection Pooling**: Device connections are cached for efficiency
 3. **Duplicate Prevention**: Records are checked against existing data to prevent duplicates
 4. **Employee Matching**: Attendance records are matched to employees by employee ID
 5. **Data Parsing**: Raw device data is parsed into structured attendance logs
 
-### Configuration:
+**Configuration:**
 - Enable/disable automatic sync in `application.properties` with `zkteco.sync.enabled`
 - Adjust the sync interval with `zkteco.sync.interval` (default: 60000ms = 60 seconds)
 - Monitor sync status and last sync time on the dashboard
 
+### 2. Push Mode (Cloud/Real-time)
+Devices can be configured to push attendance data to the server in real-time when punches occur.
+
+**How It Works:**
+1. **Device Initiates**: Device connects to the server (instead of server connecting to device)
+2. **Real-time Push**: Attendance records are sent immediately when punches happen
+3. **Server Listener**: Application listens for incoming connections on port 8086
+4. **Automatic Processing**: Pushed data is processed and stored automatically
+
+**Configuration:**
+- Push mode server is **enabled by default** on port 8086
+- Configure devices to connect to: `<server-ip>:8086` in cloud/push mode
+- See [PUSH_MODE_GUIDE.md](PUSH_MODE_GUIDE.md) for detailed device configuration
+
+**Benefits:**
+- ✅ Solves "Connection reset" errors caused by conflicting connection attempts
+- ✅ Real-time data sync (no 60-second delay)
+- ✅ Works with devices behind NAT/firewall
+- ✅ Reduces network overhead
+
 ### Protocol Details:
-The application uses direct TCP/IP socket communication with ZKTeco devices on port 4370 (default). It implements:
-- Device connection handshake with session management
-- Command/response packet structure with checksums
-- Attendance data retrieval and parsing
-- Employee data push to devices
+The application uses direct TCP/IP socket communication with ZKTeco devices:
+- **Pull Mode**: Application connects to device on port 4370
+- **Push Mode**: Device connects to application on port 8086
+- Implements ZKTeco proprietary protocol with:
+  - Device connection handshake with session management
+  - Command/response packet structure with checksums
+  - Attendance data retrieval and parsing
+  - Employee data push to devices
 
 ## Network Requirements
 
 - The application server must be on the same network as the ZKTeco devices
-- Ensure firewalls allow communication on the configured ports
-- Default ZKTeco device port is 4370 (configurable per device)
+- Ensure firewalls allow communication on the configured ports:
+  - **Port 8081**: Web UI (HTTP)
+  - **Port 4370**: Device communication in pull mode (outgoing)
+  - **Port 8086**: Device communication in push mode (incoming)
+- For push mode, devices must be able to reach the server IP address
+
+**Firewall Configuration (Ubuntu/Debian):**
+```bash
+sudo ufw allow 8081/tcp  # Web UI
+sudo ufw allow 8086/tcp  # Push mode
+```
+
+## Troubleshooting Connection Issues
+
+### "Connection Reset" Errors
+
+If you see "Connection reset" errors in logs, your device is likely configured in **push/cloud mode**. Solutions:
+
+1. **Use Push Mode (Recommended)**:
+   - The push mode server is already running on port 8086
+   - Configure your device cloud settings to point to: `<server-ip>:8086`
+   - See [PUSH_MODE_GUIDE.md](PUSH_MODE_GUIDE.md) for step-by-step instructions
+
+2. **Switch to Pull Mode**:
+   - Disable cloud/push mode in device settings
+   - The application will connect to device on port 4370
+
+3. **Use Both Modes** (Hybrid):
+   - Application supports both simultaneously
+   - Devices can be mixed (some push, some pull)
 
 ## Testing
 
@@ -186,16 +240,36 @@ The tests use an in-memory H2 database and don't require a running PostgreSQL in
 - Ensure the database and user exist
 
 ### Device Connection Issues
+
+#### "Connection Reset" Errors
+**Symptom**: Application logs show "Connection reset" or "Error connecting to device"
+
+**Cause**: Device is configured in push/cloud mode, trying to connect to server while server tries to connect to device
+
+**Solution**: Configure device to use push mode
+1. Access device menu → Communication → Cloud Server
+2. Set Server IP: `<your-server-ip>` (e.g., 192.168.1.109)
+3. Set Server Port: `8086`
+4. Enable cloud mode
+5. Save and reboot device
+6. See [PUSH_MODE_GUIDE.md](PUSH_MODE_GUIDE.md) for detailed instructions
+
+#### General Connection Issues
 - Verify the device is powered on and connected to the network
-- Check the IP address and port are correct (default port: 4370)
-- Ensure firewall rules allow TCP communication on the device port
+- Check the IP address and port are correct (default port: 4370 for pull mode, 8086 for push mode)
+- Ensure firewall rules allow TCP communication:
+  ```bash
+  sudo ufw allow 8086/tcp  # For push mode
+  sudo ufw allow 4370/tcp  # For pull mode (if needed)
+  ```
 - Test connectivity: `ping <device-ip>`
 - Check device logs - the application now uses real TCP/IP communication
 - Ensure the device firmware supports network communication (not just USB)
 - Verify the device is not in sleep mode or standby
+- Check if port 8086 is listening: `netstat -an | grep 8086`
 
 ### Application Won't Start
-- Check if port 8081 is already in use
+- Check if port 8081 or 8086 is already in use
 - Verify Java 17 or higher is installed: `java -version`
 - Check application logs for detailed error messages
 
@@ -204,12 +278,15 @@ The tests use an in-memory H2 database and don't require a running PostgreSQL in
 ```
 src/main/java/com/egfs/bio_new/
 ├── controller/         # Web controllers (Device, Employee, Sync, Home)
+├── config/            # Configuration classes
+│   └── ZKTecoServerConfig.java  # Push mode server configuration
 ├── entity/            # JPA entities (Device, Employee, AttendanceLog)
 ├── repository/        # Spring Data JPA repositories
 ├── service/           # Business logic services
 ├── sdk/               # ZKTeco device SDK implementation
-│   ├── ZKTecoDevice.java      # TCP/IP device communication
-│   └── AttendanceRecord.java  # Data transfer object
+│   ├── ZKTecoDevice.java         # TCP/IP device communication (pull mode)
+│   ├── ZKTecoServerListener.java # Server socket listener (push mode)
+│   └── AttendanceRecord.java     # Data transfer object
 └── BioNewApplication.java  # Main application class
 
 src/main/resources/
