@@ -56,39 +56,93 @@ public class ZKTecoDevice {
      * Connect to the device
      */
     public boolean connect() {
-        try {
-            log.info("Connecting to ZKTeco device at {}:{}", ipAddress, port);
-            socket = new Socket(ipAddress, port);
-            socket.setSoTimeout(10000); // 10 second timeout
-            out = new DataOutputStream(socket.getOutputStream());
-            in = new DataInputStream(socket.getInputStream());
+        return connectWithRetry(3, 2000);
+    }
+    
+    /**
+     * Connect to the device with retry logic
+     * 
+     * @param maxRetries Maximum number of connection attempts
+     * @param retryDelayMs Delay between retries in milliseconds
+     * @return true if connected successfully, false otherwise
+     */
+    private boolean connectWithRetry(int maxRetries, long retryDelayMs) {
+        int attempt = 0;
+        
+        while (attempt < maxRetries) {
+            attempt++;
             
-            // Send connect command
-            byte[] cmd = createCommand(CMD_CONNECT, new byte[0]);
-            out.write(cmd);
-            out.flush();
-            
-            // Read response
-            byte[] reply = readReply();
-            if (reply != null) {
-                sessionId = ByteBuffer.wrap(reply, 4, 2).order(ByteOrder.LITTLE_ENDIAN).getShort() & 0xFFFF;
-                log.info("Successfully connected to device. Session ID: {}", sessionId);
-                return true;
+            try {
+                log.info("Connecting to ZKTeco device at {}:{} (attempt {}/{})", 
+                        ipAddress, port, attempt, maxRetries);
+                
+                // Clean up any existing connection
+                if (socket != null) {
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        // Ignore
+                    }
+                }
+                
+                // Create new socket connection
+                socket = new Socket();
+                socket.connect(new java.net.InetSocketAddress(ipAddress, port), 5000);
+                socket.setSoTimeout(10000); // 10 second timeout for read operations
+                socket.setKeepAlive(true);
+                socket.setTcpNoDelay(true);
+                
+                out = new DataOutputStream(socket.getOutputStream());
+                in = new DataInputStream(socket.getInputStream());
+                
+                // Send connect command
+                byte[] cmd = createCommand(CMD_CONNECT, new byte[0]);
+                out.write(cmd);
+                out.flush();
+                
+                log.debug("Connect command sent, waiting for reply...");
+                
+                // Read response
+                byte[] reply = readReply();
+                if (reply != null && reply.length >= 6) {
+                    sessionId = ByteBuffer.wrap(reply, 4, 2).order(ByteOrder.LITTLE_ENDIAN).getShort() & 0xFFFF;
+                    log.info("Successfully connected to device at {}:{}. Session ID: {}", 
+                            ipAddress, port, sessionId);
+                    return true;
+                } else {
+                    log.warn("No valid response from device (attempt {}/{})", attempt, maxRetries);
+                }
+                
+            } catch (SocketTimeoutException e) {
+                log.warn("Connection timeout to {}:{} (attempt {}/{}): {}", 
+                        ipAddress, port, attempt, maxRetries, e.getMessage());
+            } catch (java.net.ConnectException e) {
+                log.warn("Connection refused to {}:{} (attempt {}/{}): {}", 
+                        ipAddress, port, attempt, maxRetries, e.getMessage());
+            } catch (IOException e) {
+                log.warn("Error connecting to device at {}:{} (attempt {}/{}): {}", 
+                        ipAddress, port, attempt, maxRetries, e.getMessage());
             }
             
-            log.error("Failed to connect - no response from device");
+            // Disconnect and clean up before retry
             disconnect();
-            return false;
             
-        } catch (SocketTimeoutException e) {
-            log.error("Connection timeout to {}:{}", ipAddress, port, e);
-            disconnect();
-            return false;
-        } catch (IOException e) {
-            log.error("Error connecting to device at {}:{}", ipAddress, port, e);
-            disconnect();
-            return false;
+            // Wait before retrying (except on last attempt)
+            if (attempt < maxRetries) {
+                try {
+                    log.debug("Waiting {}ms before retry...", retryDelayMs);
+                    Thread.sleep(retryDelayMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("Interrupted while waiting to retry connection");
+                    break;
+                }
+            }
         }
+        
+        log.error("Failed to connect to device at {}:{} after {} attempts", 
+                ipAddress, port, maxRetries);
+        return false;
     }
     
     /**
@@ -393,47 +447,49 @@ public class ZKTecoDevice {
      * Create a command packet
      */
     private byte[] createCommand(int command, byte[] data) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(baos);
+        // Use ByteBuffer for consistent little-endian byte order
+        int headerSize = 16;
+        ByteBuffer buffer = ByteBuffer.allocate(headerSize + data.length).order(ByteOrder.LITTLE_ENDIAN);
         
-        // Calculate packet size
-        int packetSize = 8 + data.length;
-        
-        // Start marker (2 bytes)
-        dos.writeShort(Short.reverseBytes((short) 0x5050));
+        // Start marker (2 bytes) - 0x5050
+        buffer.putShort((short) 0x5050);
         
         // Device ID (2 bytes) - always 0 for TCP
-        dos.writeShort(0);
+        buffer.putShort((short) 0);
         
         // Session ID (2 bytes)
-        dos.writeShort(Short.reverseBytes((short) sessionId));
+        buffer.putShort((short) sessionId);
         
         // Reply number (2 bytes)
-        dos.writeShort(Short.reverseBytes((short) replyNumber));
+        buffer.putShort((short) replyNumber);
         replyNumber = (replyNumber + 1) % USHRT_MAX;
         
         // Command ID (2 bytes)
-        dos.writeShort(Short.reverseBytes((short) command));
+        buffer.putShort((short) command);
         
-        // Checksum (2 bytes) - calculated later
-        dos.writeShort(0);
+        // Checksum placeholder (2 bytes) - will be calculated and set later
+        int checksumPosition = buffer.position();
+        buffer.putShort((short) 0);
         
-        // Data
-        dos.write(data);
+        // Data size (4 bytes)
+        buffer.putInt(data.length);
         
-        byte[] packet = baos.toByteArray();
+        // Data payload
+        buffer.put(data);
         
-        // Calculate checksum
+        byte[] packet = buffer.array();
+        
+        // Calculate checksum over entire packet except checksum field itself
         int checksum = 0;
         for (int i = 0; i < packet.length; i++) {
-            if (i != 10 && i != 11) { // Skip checksum field itself
+            if (i != checksumPosition && i != checksumPosition + 1) {
                 checksum += packet[i] & 0xFF;
             }
         }
         
-        // Set checksum in packet
-        packet[10] = (byte) (checksum & 0xFF);
-        packet[11] = (byte) ((checksum >> 8) & 0xFF);
+        // Set checksum in packet (little-endian)
+        packet[checksumPosition] = (byte) (checksum & 0xFF);
+        packet[checksumPosition + 1] = (byte) ((checksum >> 8) & 0xFF);
         
         return packet;
     }
