@@ -96,23 +96,35 @@ public class ZKTecoDevice {
      */
     public void disconnect() {
         try {
-            if (socket != null && !socket.isClosed()) {
-                // Send disconnect command
-                byte[] cmd = createCommand(CMD_EXIT, new byte[0]);
-                out.write(cmd);
-                out.flush();
-                
-                socket.close();
-                log.info("Disconnected from device at {}:{}", ipAddress, port);
+            if (socket != null && !socket.isClosed() && socket.isConnected() && !socket.isInputShutdown() && !socket.isOutputShutdown()) {
+                try {
+                    // Send disconnect command only if socket is in a good state
+                    byte[] cmd = createCommand(CMD_EXIT, new byte[0]);
+                    out.write(cmd);
+                    out.flush();
+                } catch (IOException e) {
+                    // Ignore errors when sending disconnect command as connection may already be broken
+                    log.debug("Could not send disconnect command (connection may already be closed): {}", e.getMessage());
+                }
             }
-        } catch (IOException e) {
-            log.error("Error disconnecting from device", e);
+        } catch (Exception e) {
+            log.debug("Error checking socket state during disconnect: {}", e.getMessage());
         } finally {
-            socket = null;
-            out = null;
-            in = null;
-            sessionId = 0;
-            replyNumber = 0;
+            // Always clean up resources regardless of socket state
+            try {
+                if (socket != null && !socket.isClosed()) {
+                    socket.close();
+                    log.info("Disconnected from device at {}:{}", ipAddress, port);
+                }
+            } catch (IOException e) {
+                log.debug("Error closing socket: {}", e.getMessage());
+            } finally {
+                socket = null;
+                out = null;
+                in = null;
+                sessionId = 0;
+                replyNumber = 0;
+            }
         }
     }
     
