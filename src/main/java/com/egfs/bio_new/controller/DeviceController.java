@@ -91,7 +91,8 @@ public class DeviceController {
         if (connected) {
             redirectAttributes.addFlashAttribute("successMessage", "Device connected successfully");
         } else {
-            redirectAttributes.addFlashAttribute("errorMessage", "Failed to connect to device");
+            redirectAttributes.addFlashAttribute("errorMessage", 
+                    "Failed to connect to device in pull mode. Device may be in push mode - if so, it will automatically send data when punches occur.");
         }
         return "redirect:/devices";
     }

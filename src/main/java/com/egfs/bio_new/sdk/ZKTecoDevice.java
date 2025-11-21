@@ -128,8 +128,14 @@ public class ZKTecoDevice {
                 log.warn("Connection refused to {}:{} (attempt {}/{}): {}", 
                         ipAddress, port, attempt, maxRetries, e.getMessage());
             } catch (IOException e) {
-                log.warn("Error connecting to device at {}:{} (attempt {}/{}): {}", 
-                        ipAddress, port, attempt, maxRetries, e.getMessage());
+                // Check if this is a connection reset error, which often indicates push mode
+                if (e.getMessage() != null && e.getMessage().contains("Connection reset")) {
+                    log.info("Connection reset from {}:{} (attempt {}/{}) - device may be in push mode", 
+                            ipAddress, port, attempt, maxRetries);
+                } else {
+                    log.warn("Error connecting to device at {}:{} (attempt {}/{}): {}", 
+                            ipAddress, port, attempt, maxRetries, e.getMessage());
+                }
             }
             
             // Disconnect and clean up before retry
@@ -149,7 +155,7 @@ public class ZKTecoDevice {
             }
         }
         
-        log.error("Failed to connect to device at {}:{} after {} attempts", 
+        log.error("Failed to connect to device at {}:{} after {} attempts - device may be in push mode or unreachable", 
                 ipAddress, port, maxRetries);
         return false;
     }
