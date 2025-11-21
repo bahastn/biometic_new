@@ -29,10 +29,10 @@ public class AttendanceLog {
     private LocalDateTime punchTime;
     
     @Column
-    private String punchType; // IN, OUT
+    private String punchType; // IN, OUT, etc.
     
     @Column
-    private Integer verifyMode; // 0: Password, 1: Fingerprint, 2: Card
+    private String verifyMode; // Password, Fingerprint, Card, Face
     
     @Column
     private LocalDateTime syncedAt;
