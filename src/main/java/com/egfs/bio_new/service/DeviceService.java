@@ -1,6 +1,7 @@
 package com.egfs.bio_new.service;
 
 import com.egfs.bio_new.entity.Device;
+import com.egfs.bio_new.exception.DeviceNotFoundException;
 import com.egfs.bio_new.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +63,7 @@ public class DeviceService {
                     log.info("Updated device: {}", device.getDeviceName());
                     return deviceRepository.save(device);
                 })
-                .orElseThrow(() -> new RuntimeException("Device not found with id: " + id));
+                .orElseThrow(() -> new DeviceNotFoundException(id));
     }
     
     @Transactional

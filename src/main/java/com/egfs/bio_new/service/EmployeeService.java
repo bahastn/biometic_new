@@ -1,6 +1,7 @@
 package com.egfs.bio_new.service;
 
 import com.egfs.bio_new.entity.Employee;
+import com.egfs.bio_new.exception.EmployeeNotFoundException;
 import com.egfs.bio_new.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +58,7 @@ public class EmployeeService {
                     log.info("Updated employee: {}", employee.getEmployeeId());
                     return employeeRepository.save(employee);
                 })
-                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
+                .orElseThrow(() -> new EmployeeNotFoundException(id));
     }
     
     @Transactional

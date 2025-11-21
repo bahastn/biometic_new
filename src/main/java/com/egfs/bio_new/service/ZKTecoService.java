@@ -32,12 +32,16 @@ public class ZKTecoService {
             log.info("Attempting to connect to device: {} at {}:{}", 
                     device.getDeviceName(), device.getIpAddress(), device.getPort());
             
-            // TODO: Implement actual ZKTeco SDK connection
-            // For now, we'll simulate a connection
+            // TODO: INTEGRATION REQUIRED - Replace simulation with actual ZKTeco SDK
+            // This is a placeholder implementation. To connect to real devices:
+            // 1. Uncomment and implement the ZKFingerReader SDK code below
+            // 2. Handle SDK-specific connection parameters
+            // 3. Implement proper error handling for device communication
+            
             // ZKFingerReader zkReader = new ZKFingerReader();
             // boolean connected = zkReader.connect(device.getIpAddress(), device.getPort());
             
-            boolean connected = true; // Simulated connection
+            boolean connected = true; // PLACEHOLDER: Simulated connection for development
             
             if (connected) {
                 device.setConnected(true);
@@ -193,7 +197,12 @@ public class ZKTecoService {
         try {
             log.info("Testing connection to {}:{}", ipAddress, port);
             
-            // TODO: Implement actual ZKTeco SDK connection test
+            // TODO: INTEGRATION REQUIRED - Replace simulation with actual ZKTeco SDK
+            // This is a placeholder implementation. To test real device connections:
+            // 1. Uncomment and implement the ZKFingerReader SDK code below
+            // 2. Properly handle connection timeouts
+            // 3. Return actual connection test results
+            
             // ZKFingerReader zkReader = new ZKFingerReader();
             // boolean connected = zkReader.connect(ipAddress, port);
             // if (connected) {
@@ -201,7 +210,7 @@ public class ZKTecoService {
             // }
             // return connected;
             
-            return true; // Simulated successful connection
+            return true; // PLACEHOLDER: Simulated successful connection for development
             
         } catch (Exception e) {
             log.error("Error testing connection to {}:{}", ipAddress, port, e);
