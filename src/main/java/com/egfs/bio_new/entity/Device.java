@@ -41,6 +41,10 @@ public class Device {
     @Column
     private LocalDateTime lastSyncTime;
     
+    @Enumerated(EnumType.STRING)
+    @Column(name = "connection_mode")
+    private ConnectionMode connectionMode = ConnectionMode.AUTO;
+    
     @Column
     private LocalDateTime createdAt;
     
