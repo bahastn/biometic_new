@@ -89,19 +89,9 @@ See [PUSH_MODE_GUIDE.md](PUSH_MODE_GUIDE.md) for detailed instructions.
 
 ## Setting Connection Mode
 
-### Via Web Interface
+### Via Database (Current Method)
 
-When adding or editing a device:
-
-1. Go to Devices page
-2. Click "Add Device" or edit existing device
-3. Set "Connection Mode" field:
-   - `AUTO` - Let system detect (default)
-   - `PULL` - Force pull mode
-   - `PUSH` - Force push mode only
-4. Save device
-
-### Via Database
+Since the web UI may not yet have the connection mode field, you can set it directly in the database:
 
 ```sql
 -- Set device to AUTO mode (default)
@@ -114,7 +104,19 @@ UPDATE devices SET connection_mode = 'PULL' WHERE id = 1;
 UPDATE devices SET connection_mode = 'PUSH' WHERE id = 1;
 ```
 
-### Via API
+### Via Web Interface (If Implemented)
+
+If the web interface has been updated with the connection mode field:
+
+1. Go to Devices page
+2. Click "Add Device" or edit existing device
+3. Set "Connection Mode" field:
+   - `AUTO` - Let system detect (default)
+   - `PULL` - Force pull mode
+   - `PUSH` - Force push mode only
+4. Save device
+
+### Via API (If Available)
 
 ```json
 POST /api/devices
