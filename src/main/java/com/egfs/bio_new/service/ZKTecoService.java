@@ -238,6 +238,28 @@ public class ZKTecoService {
         try {
             log.info("Syncing attendance data from device: {}", device.getDeviceName());
             
+            // Check if device is in PUSH mode - cannot pull data from push-only devices
+            ConnectionMode connectionMode = device.getConnectionMode();
+            if (connectionMode == ConnectionMode.PUSH) {
+                log.warn("╔════════════════════════════════════════════════════════════════╗");
+                log.warn("║ CANNOT SYNC - DEVICE IN PUSH MODE                             ║");
+                log.warn("╠════════════════════════════════════════════════════════════════╣");
+                log.warn("║ Device: {}                                                 ║", formatDeviceName(device.getDeviceName()));
+                log.warn("║ IP Address: {}                                         ║", formatIpAddress(device.getIpAddress(), device.getPort()));
+                log.warn("║                                                                ║");
+                log.warn("║ This device is configured in PUSH mode only.                  ║");
+                log.warn("║ Manual sync is not available for push mode devices.           ║");
+                log.warn("║                                                                ║");
+                log.warn("║ Attendance data will sync automatically when punches occur.   ║");
+                log.warn("║ Device pushes data to server on port 8086 in real-time.       ║");
+                log.warn("║                                                                ║");
+                log.warn("║ To enable manual sync:                                        ║");
+                log.warn("║ 1. Change device mode to AUTO or PULL                         ║");
+                log.warn("║ 2. Or disable push mode on the physical device                ║");
+                log.warn("╚════════════════════════════════════════════════════════════════╝");
+                return newLogs;
+            }
+            
             ZKTecoDevice zkDevice = getDeviceConnection(device);
             
             // Connect if not already connected
@@ -307,6 +329,26 @@ public class ZKTecoService {
     public boolean pushEmployeeToDevice(Device device, Employee employee) {
         try {
             log.info("Pushing employee {} to device: {}", employee.getEmployeeId(), device.getDeviceName());
+            
+            // Check if device is in PUSH mode - cannot push employee data to push-only devices
+            ConnectionMode connectionMode = device.getConnectionMode();
+            if (connectionMode == ConnectionMode.PUSH) {
+                log.warn("╔════════════════════════════════════════════════════════════════╗");
+                log.warn("║ CANNOT PUSH EMPLOYEE - DEVICE IN PUSH MODE                    ║");
+                log.warn("╠════════════════════════════════════════════════════════════════╣");
+                log.warn("║ Device: {}                                                 ║", formatDeviceName(device.getDeviceName()));
+                log.warn("║ IP Address: {}                                         ║", formatIpAddress(device.getIpAddress(), device.getPort()));
+                log.warn("║ Employee: {}                                               ║", String.format("%-55s", employee.getEmployeeId() + " - " + employee.getName()));
+                log.warn("║                                                                ║");
+                log.warn("║ This device is configured in PUSH mode only.                  ║");
+                log.warn("║ Employee data cannot be pushed to push mode devices.          ║");
+                log.warn("║                                                                ║");
+                log.warn("║ To push employee data:                                        ║");
+                log.warn("║ 1. Change device mode to AUTO or PULL                         ║");
+                log.warn("║ 2. Or configure employee directly on the device               ║");
+                log.warn("╚════════════════════════════════════════════════════════════════╝");
+                return false;
+            }
             
             ZKTecoDevice zkDevice = getDeviceConnection(device);
             
