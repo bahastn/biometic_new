@@ -72,8 +72,9 @@ public class ZKTecoService {
             log.info("Attempting to connect to device: {} at {}:{}", 
                     device.getDeviceName(), device.getIpAddress(), device.getPort());
             
-            // Register device with server listener for push mode
+            // Register device with server listener for push mode support
             registerDeviceWithServerListener(device);
+            log.info("Device {} registered for push mode on port 8086", device.getDeviceName());
             
             ZKTecoDevice zkDevice = getDeviceConnection(device);
             boolean connected = zkDevice.connect();
@@ -82,12 +83,30 @@ public class ZKTecoService {
                 device.setConnected(true);
                 device.setLastSyncTime(LocalDateTime.now());
                 deviceRepository.save(device);
-                log.info("Successfully connected to device: {}", device.getDeviceName());
+                log.info("╔════════════════════════════════════════════════════════════════╗");
+                log.info("║ PULL MODE CONNECTION SUCCESSFUL                                ║");
+                log.info("╠════════════════════════════════════════════════════════════════╣");
+                log.info("║ Device: {}                                                 ║", device.getDeviceName());
+                log.info("║ IP Address: {}:{}                                          ║", device.getIpAddress(), device.getPort());
+                log.info("║ Mode: Pull (Application initiated connection)                 ║");
+                log.info("║ Status: Connected and ready for data sync                     ║");
+                log.info("╚════════════════════════════════════════════════════════════════╝");
                 return true;
             } else {
                 device.setConnected(false);
                 deviceRepository.save(device);
-                log.info("Failed to connect in pull mode to device: {} - device may be in push mode, waiting for data...", device.getDeviceName());
+                log.warn("╔════════════════════════════════════════════════════════════════╗");
+                log.warn("║ PULL MODE CONNECTION FAILED                                    ║");
+                log.warn("╠════════════════════════════════════════════════════════════════╣");
+                log.warn("║ Device: {}                                                 ║", device.getDeviceName());
+                log.warn("║ IP Address: {}:{}                                          ║", device.getIpAddress(), device.getPort());
+                log.warn("║                                                                ║");
+                log.warn("║ PUSH MODE FALLBACK ACTIVE                                      ║");
+                log.warn("║ - Device is registered to receive push data on port 8086      ║");
+                log.warn("║ - If device is configured for push mode, data will sync       ║");
+                log.warn("║   automatically when punches occur                             ║");
+                log.warn("║ - Check PUSH_MODE_GUIDE.md for device configuration           ║");
+                log.warn("╚════════════════════════════════════════════════════════════════╝");
                 // Even if pull mode fails, keep device registered for push mode
                 return false;
             }

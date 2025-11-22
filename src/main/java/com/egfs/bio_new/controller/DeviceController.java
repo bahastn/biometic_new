@@ -89,10 +89,13 @@ public class DeviceController {
     public String connectDevice(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         boolean connected = deviceService.connectDevice(id);
         if (connected) {
-            redirectAttributes.addFlashAttribute("successMessage", "Device connected successfully");
+            redirectAttributes.addFlashAttribute("successMessage", 
+                    "✓ Device connected successfully in PULL mode. Ready for data sync.");
         } else {
-            redirectAttributes.addFlashAttribute("errorMessage", 
-                    "Failed to connect in pull mode. Device may be in push mode and will send data automatically.");
+            redirectAttributes.addFlashAttribute("warningMessage", 
+                    "⚠ Pull mode connection failed. Device is now registered for PUSH mode. " +
+                    "Please configure the device to push data to this server (port 8086). " +
+                    "See PUSH_MODE_GUIDE.md for instructions.");
         }
         return "redirect:/devices";
     }

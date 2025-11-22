@@ -96,6 +96,16 @@ public class ZKTecoDevice {
      * Connect to the device
      */
     public boolean connect() {
+        // Pre-flight check: verify device is reachable before attempting connection
+        if (!isDeviceReachable()) {
+            log.error("Device at {}:{} is not reachable. Please check:", ipAddress, port);
+            log.error("  1. Device is powered on");
+            log.error("  2. Device IP address {} is correct", ipAddress);
+            log.error("  3. Device is on the same network or network route exists");
+            log.error("  4. No firewall is blocking access to port {}", port);
+            return false;
+        }
+        
         // Use Resilience4j retry mechanism with exponential backoff
         try {
             Supplier<Boolean> connectSupplier = () -> {
@@ -109,13 +119,55 @@ public class ZKTecoDevice {
             Supplier<Boolean> decoratedSupplier = Retry.decorateSupplier(retry, connectSupplier);
             return decoratedSupplier.get();
         } catch (DeviceConnectionException e) {
+            String errorMsg = e.getCause().getMessage();
             log.error("Failed to connect to device at {}:{} after all retry attempts: {}", 
-                    ipAddress, port, e.getCause().getMessage());
+                    ipAddress, port, errorMsg);
+            
+            // Provide specific guidance based on error type
+            if (errorMsg != null && errorMsg.toLowerCase().contains("reset")) {
+                log.error("╔════════════════════════════════════════════════════════════════╗");
+                log.error("║ DEVICE APPEARS TO BE IN PUSH MODE                             ║");
+                log.error("╠════════════════════════════════════════════════════════════════╣");
+                log.error("║ The device is rejecting incoming connections (connection      ║");
+                log.error("║ reset). This typically means the device is configured to      ║");
+                log.error("║ PUSH data to a server instead of accepting PULL requests.     ║");
+                log.error("║                                                                ║");
+                log.error("║ TO FIX THIS:                                                   ║");
+                log.error("║ 1. Configure device to push data to server port 8086          ║");
+                log.error("║    (Use device menu: Comm -> Cloud Server)                    ║");
+                log.error("║ 2. OR disable push mode on device and use pull mode           ║");
+                log.error("║ 3. Verify ZKTeco push server is running on port 8086          ║");
+                log.error("║                                                                ║");
+                log.error("║ See PUSH_MODE_GUIDE.md for detailed configuration steps       ║");
+                log.error("╚════════════════════════════════════════════════════════════════╝");
+            }
             return false;
         } catch (Exception e) {
             log.error("Unexpected error connecting to device at {}:{}: {}", 
                     ipAddress, port, e.getMessage());
             return false;
+        }
+    }
+    
+    /**
+     * Check if device is reachable on the network
+     * Performs a basic network connectivity test before attempting full connection
+     */
+    private boolean isDeviceReachable() {
+        // Try to create a socket connection with a short timeout (2 seconds)
+        // This is just a basic reachability test
+        try (Socket testSocket = new Socket()) {
+            testSocket.connect(new java.net.InetSocketAddress(ipAddress, port), 2000);
+            log.debug("Device at {}:{} is reachable", ipAddress, port);
+            return true;
+        } catch (java.net.ConnectException e) {
+            log.debug("Device at {}:{} is not reachable: {}", ipAddress, port, e.getMessage());
+            return false;
+        } catch (Exception e) {
+            // If we get other exceptions (like connection reset), the device is actually reachable
+            // just not accepting connections in pull mode - this is fine, return true
+            log.debug("Device at {}:{} responded (may be in push mode): {}", ipAddress, port, e.getMessage());
+            return true;
         }
     }
     

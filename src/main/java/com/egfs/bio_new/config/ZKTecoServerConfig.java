@@ -33,13 +33,27 @@ public class ZKTecoServerConfig implements ApplicationRunner {
         if (serverEnabled) {
             try {
                 serverListener.start(serverPort);
-                log.info("ZKTeco push mode server started on port {}", serverPort);
-                log.info("Devices can now push data to this server at {}:{}", getServerAddress(), serverPort);
+                // Server listener now provides its own detailed startup message
             } catch (Exception e) {
                 log.error("Failed to start ZKTeco server listener", e);
+                log.error("╔════════════════════════════════════════════════════════════════╗");
+                log.error("║ CRITICAL: PUSH MODE NOT AVAILABLE                              ║");
+                log.error("╠════════════════════════════════════════════════════════════════╣");
+                log.error("║ Devices configured for push mode will NOT be able to connect  ║");
+                log.error("║ Only pull mode will be available                               ║");
+                log.error("║                                                                ║");
+                log.error("║ To fix: Restart application after resolving port conflict     ║");
+                log.error("╚════════════════════════════════════════════════════════════════╝");
             }
         } else {
-            log.info("ZKTeco push mode server is disabled");
+            log.warn("╔════════════════════════════════════════════════════════════════╗");
+            log.warn("║ ZKTeco PUSH MODE SERVER DISABLED                               ║");
+            log.warn("╠════════════════════════════════════════════════════════════════╣");
+            log.warn("║ Only PULL mode is available                                    ║");
+            log.warn("║ Devices must be configured to accept incoming connections     ║");
+            log.warn("║                                                                ║");
+            log.warn("║ To enable push mode, set: zkteco.server.enabled=true          ║");
+            log.warn("╚════════════════════════════════════════════════════════════════╝");
         }
     }
     
