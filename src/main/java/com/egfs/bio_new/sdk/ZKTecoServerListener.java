@@ -83,6 +83,9 @@ public class ZKTecoServerListener {
             String displayAddress = serverAddress;
             if (displayAddress == null || displayAddress.isEmpty() || "0.0.0.0".equals(displayAddress)) {
                 displayAddress = "<your-server-ip>";
+            } else if (displayAddress.length() > 47) {
+                // Truncate long addresses to fit in the box
+                displayAddress = displayAddress.substring(0, 44) + "...";
             }
             
             log.info("╔════════════════════════════════════════════════════════════════╗");

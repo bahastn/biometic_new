@@ -28,7 +28,7 @@ public class ZKTecoServerConfig implements ApplicationRunner {
     @Value("${zkteco.server.port:8086}")
     private int serverPort;
     
-    @Value("${server.address:}")
+    @Value("${server.address:#{null}}")
     private String serverAddress;
     
     @Override
