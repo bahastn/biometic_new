@@ -42,6 +42,30 @@ public class ZKTecoService {
     private final Map<Long, ZKTecoDevice> deviceConnections = new ConcurrentHashMap<>();
     
     /**
+     * Format device name for log messages, truncating if too long
+     */
+    private String formatDeviceName(String deviceName) {
+        if (deviceName == null) {
+            deviceName = "Unknown";
+        }
+        if (deviceName.length() > LOG_BOX_DEVICE_NAME_WIDTH) {
+            deviceName = deviceName.substring(0, LOG_BOX_DEVICE_NAME_WIDTH - 3) + "...";
+        }
+        return String.format("%-" + LOG_BOX_DEVICE_NAME_WIDTH + "s", deviceName);
+    }
+    
+    /**
+     * Format IP address and port for log messages, truncating if too long
+     */
+    private String formatIpAddress(String ipAddress, int port) {
+        String fullAddress = ipAddress + ":" + port;
+        if (fullAddress.length() > LOG_BOX_IP_ADDRESS_WIDTH) {
+            fullAddress = fullAddress.substring(0, LOG_BOX_IP_ADDRESS_WIDTH - 3) + "...";
+        }
+        return String.format("%-" + LOG_BOX_IP_ADDRESS_WIDTH + "s", fullAddress);
+    }
+    
+    /**
      * Register all active devices with the server listener on startup
      */
     @PostConstruct
@@ -74,7 +98,7 @@ public class ZKTecoService {
      */
     public boolean connectToDevice(Device device) {
         try {
-            // Get connection mode (default to AUTO if not set)
+            // Get connection mode (uses AUTO if null via fromString)
             ConnectionMode connectionMode = device.getConnectionMode();
             if (connectionMode == null) {
                 connectionMode = ConnectionMode.AUTO;
@@ -92,8 +116,8 @@ public class ZKTecoService {
                 log.info("╔════════════════════════════════════════════════════════════════╗");
                 log.info("║ PUSH MODE CONFIGURED                                           ║");
                 log.info("╠════════════════════════════════════════════════════════════════╣");
-                log.info("║ Device: {}                                                 ║", String.format("%-" + LOG_BOX_DEVICE_NAME_WIDTH + "s", device.getDeviceName()));
-                log.info("║ IP Address: {}                                         ║", String.format("%-" + LOG_BOX_IP_ADDRESS_WIDTH + "s", device.getIpAddress() + ":" + device.getPort()));
+                log.info("║ Device: {}                                                 ║", formatDeviceName(device.getDeviceName()));
+                log.info("║ IP Address: {}                                         ║", formatIpAddress(device.getIpAddress(), device.getPort()));
                 log.info("║ Mode: PUSH (Device will initiate connection)                  ║");
                 log.info("║                                                                ║");
                 log.info("║ Device is registered to receive push data on port 8086        ║");
@@ -126,8 +150,8 @@ public class ZKTecoService {
                 log.info("╔════════════════════════════════════════════════════════════════╗");
                 log.info("║ PULL MODE CONNECTION SUCCESSFUL                                ║");
                 log.info("╠════════════════════════════════════════════════════════════════╣");
-                log.info("║ Device: {}                                                 ║", String.format("%-" + LOG_BOX_DEVICE_NAME_WIDTH + "s", device.getDeviceName()));
-                log.info("║ IP Address: {}                                         ║", String.format("%-" + LOG_BOX_IP_ADDRESS_WIDTH + "s", device.getIpAddress() + ":" + device.getPort()));
+                log.info("║ Device: {}                                                 ║", formatDeviceName(device.getDeviceName()));
+                log.info("║ IP Address: {}                                         ║", formatIpAddress(device.getIpAddress(), device.getPort()));
                 log.info("║ Mode: Pull (Application initiated connection)                 ║");
                 log.info("║ Status: Connected and ready for data sync                     ║");
                 log.info("╚════════════════════════════════════════════════════════════════╝");
@@ -146,8 +170,8 @@ public class ZKTecoService {
                     log.info("╔════════════════════════════════════════════════════════════════╗");
                     log.info("║ PUSH MODE DETECTED                                             ║");
                     log.info("╠════════════════════════════════════════════════════════════════╣");
-                    log.info("║ Device: {}                                                 ║", String.format("%-" + LOG_BOX_DEVICE_NAME_WIDTH + "s", device.getDeviceName()));
-                    log.info("║ IP Address: {}                                         ║", String.format("%-" + LOG_BOX_IP_ADDRESS_WIDTH + "s", device.getIpAddress() + ":" + device.getPort()));
+                    log.info("║ Device: {}                                                 ║", formatDeviceName(device.getDeviceName()));
+                    log.info("║ IP Address: {}                                         ║", formatIpAddress(device.getIpAddress(), device.getPort()));
                     log.info("║                                                                ║");
                     log.info("║ Device appears to be configured in PUSH mode                   ║");
                     log.info("║ - Device is registered to receive push data on port 8086      ║");
@@ -159,8 +183,8 @@ public class ZKTecoService {
                     log.warn("╔════════════════════════════════════════════════════════════════╗");
                     log.warn("║ PULL MODE CONNECTION FAILED                                    ║");
                     log.warn("╠════════════════════════════════════════════════════════════════╣");
-                    log.warn("║ Device: {}                                                 ║", String.format("%-" + LOG_BOX_DEVICE_NAME_WIDTH + "s", device.getDeviceName()));
-                    log.warn("║ IP Address: {}                                         ║", String.format("%-" + LOG_BOX_IP_ADDRESS_WIDTH + "s", device.getIpAddress() + ":" + device.getPort()));
+                    log.warn("║ Device: {}                                                 ║", formatDeviceName(device.getDeviceName()));
+                    log.warn("║ IP Address: {}                                         ║", formatIpAddress(device.getIpAddress(), device.getPort()));
                     log.warn("║                                                                ║");
                     log.warn("║ PUSH MODE FALLBACK ACTIVE                                      ║");
                     log.warn("║ - Device is registered to receive push data on port 8086      ║");
