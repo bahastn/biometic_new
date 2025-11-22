@@ -43,6 +43,15 @@ public class SyncController {
             Device device = deviceService.getDeviceById(deviceId)
                     .orElseThrow(() -> new RuntimeException("Device not found"));
             
+            // Check if device is in PUSH mode
+            if (device.getConnectionMode() != null && device.getConnectionMode().toString().equals("PUSH")) {
+                redirectAttributes.addFlashAttribute("errorMessage", 
+                        "Cannot push employee to PUSH mode device '" + device.getDeviceName() + "'. " +
+                        "Employee data must be configured directly on the device. " +
+                        "To enable pushing employees, change the device mode to AUTO or PULL.");
+                return "redirect:/sync";
+            }
+            
             boolean success = zkTecoService.pushEmployeeToDevice(device, employee);
             
             if (success) {
@@ -65,6 +74,16 @@ public class SyncController {
         try {
             Device device = deviceService.getDeviceById(deviceId)
                     .orElseThrow(() -> new RuntimeException("Device not found"));
+            
+            // Check if device is in PUSH mode
+            if (device.getConnectionMode() != null && device.getConnectionMode().toString().equals("PUSH")) {
+                redirectAttributes.addFlashAttribute("errorMessage", 
+                        "Cannot push employees to PUSH mode device '" + device.getDeviceName() + "'. " +
+                        "Employee data must be configured directly on the device. " +
+                        "To enable pushing employees, change the device mode to AUTO or PULL.");
+                return "redirect:/sync";
+            }
+            
             List<Employee> employees = employeeService.getActiveEmployees();
             
             int successCount = 0;
@@ -89,6 +108,15 @@ public class SyncController {
         try {
             Device device = deviceService.getDeviceById(deviceId)
                     .orElseThrow(() -> new RuntimeException("Device not found"));
+            
+            // Check if device is in PUSH mode
+            if (device.getConnectionMode() != null && device.getConnectionMode().toString().equals("PUSH")) {
+                redirectAttributes.addFlashAttribute("errorMessage", 
+                        "Cannot sync from PUSH mode device '" + device.getDeviceName() + "'. " +
+                        "This device automatically pushes data to the server in real-time. " +
+                        "No manual sync is needed. To enable manual sync, change the device mode to AUTO or PULL.");
+                return "redirect:/sync";
+            }
             
             int recordCount = zkTecoService.syncAttendanceData(device).size();
             
