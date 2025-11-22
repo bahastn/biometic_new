@@ -1,5 +1,6 @@
 package com.egfs.bio_new.sdk;
 
+import com.egfs.bio_new.exception.DeviceConnectionException;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
@@ -56,6 +57,11 @@ public class ZKTecoDevice {
     private static final int READ_TIMEOUT_MS = 15000; // Increased socket read timeout
     private static final int MAX_DATA_SIZE = 5 * 1024 * 1024; // Maximum 5MB data size for safety
     
+    // Retry configuration constants
+    private static final int MAX_RETRY_ATTEMPTS = 5; // Maximum number of connection attempts
+    private static final long INITIAL_RETRY_WAIT_MS = 1000; // Initial wait duration in milliseconds
+    private static final int RETRY_BACKOFF_MULTIPLIER = 2; // Exponential backoff multiplier
+    
     // Retry configuration
     private final Retry retry;
     
@@ -65,10 +71,10 @@ public class ZKTecoDevice {
         
         // Configure retry with exponential backoff
         RetryConfig config = RetryConfig.custom()
-                .maxAttempts(5) // Increased from 3 to 5 attempts
-                .waitDuration(Duration.ofMillis(1000)) // Initial wait of 1 second
+                .maxAttempts(MAX_RETRY_ATTEMPTS)
+                .waitDuration(Duration.ofMillis(INITIAL_RETRY_WAIT_MS))
                 .intervalFunction(io.github.resilience4j.core.IntervalFunction
-                        .ofExponentialBackoff(1000, 2)) // Exponential backoff with multiplier 2
+                        .ofExponentialBackoff(INITIAL_RETRY_WAIT_MS, RETRY_BACKOFF_MULTIPLIER))
                 .retryOnException(e -> 
                     e instanceof IOException || 
                     e instanceof SocketTimeoutException)
@@ -97,14 +103,18 @@ public class ZKTecoDevice {
                 try {
                     return attemptConnection();
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    throw new DeviceConnectionException("Failed to connect to device", e);
                 }
             };
             
             Supplier<Boolean> decoratedSupplier = Retry.decorateSupplier(retry, connectSupplier);
             return decoratedSupplier.get();
-        } catch (Exception e) {
+        } catch (DeviceConnectionException e) {
             log.error("Failed to connect to device at {}:{} after all retry attempts: {}", 
+                    ipAddress, port, e.getCause().getMessage());
+            return false;
+        } catch (Exception e) {
+            log.error("Unexpected error connecting to device at {}:{}: {}", 
                     ipAddress, port, e.getMessage());
             return false;
         }
