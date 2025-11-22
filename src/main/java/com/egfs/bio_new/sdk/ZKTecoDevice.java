@@ -72,7 +72,6 @@ public class ZKTecoDevice {
         // Configure retry with exponential backoff
         RetryConfig config = RetryConfig.custom()
                 .maxAttempts(MAX_RETRY_ATTEMPTS)
-                .waitDuration(Duration.ofMillis(INITIAL_RETRY_WAIT_MS))
                 .intervalFunction(io.github.resilience4j.core.IntervalFunction
                         .ofExponentialBackoff(INITIAL_RETRY_WAIT_MS, RETRY_BACKOFF_MULTIPLIER))
                 .retryOnException(e -> 
