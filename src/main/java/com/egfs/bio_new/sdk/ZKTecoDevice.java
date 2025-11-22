@@ -120,26 +120,14 @@ public class ZKTecoDevice {
             return decoratedSupplier.get();
         } catch (DeviceConnectionException e) {
             String errorMsg = e.getCause().getMessage();
-            log.error("Failed to connect to device at {}:{} after all retry attempts: {}", 
-                    ipAddress, port, errorMsg);
             
             // Provide specific guidance based on error type
             if (errorMsg != null && errorMsg.toLowerCase().contains("reset")) {
-                log.error("╔════════════════════════════════════════════════════════════════╗");
-                log.error("║ DEVICE APPEARS TO BE IN PUSH MODE                             ║");
-                log.error("╠════════════════════════════════════════════════════════════════╣");
-                log.error("║ The device is rejecting incoming connections (connection      ║");
-                log.error("║ reset). This typically means the device is configured to      ║");
-                log.error("║ PUSH data to a server instead of accepting PULL requests.     ║");
-                log.error("║                                                                ║");
-                log.error("║ TO FIX THIS:                                                   ║");
-                log.error("║ 1. Configure device to push data to server port 8086          ║");
-                log.error("║    (Use device menu: Comm -> Cloud Server)                    ║");
-                log.error("║ 2. OR disable push mode on device and use pull mode           ║");
-                log.error("║ 3. Verify ZKTeco push server is running on port 8086          ║");
-                log.error("║                                                                ║");
-                log.error("║ See PUSH_MODE_GUIDE.md for detailed configuration steps       ║");
-                log.error("╚════════════════════════════════════════════════════════════════╝");
+                log.info("Connection reset from {}:{} - device appears to be in push mode", ipAddress, port);
+                log.debug("Device at {}:{} is rejecting pull connections. Configure device to push data to server on port 8086 or disable push mode on device.", ipAddress, port);
+            } else {
+                log.error("Failed to connect to device at {}:{} after all retry attempts: {}", 
+                        ipAddress, port, errorMsg);
             }
             return false;
         } catch (Exception e) {

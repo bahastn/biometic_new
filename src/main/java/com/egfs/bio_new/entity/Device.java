@@ -42,6 +42,9 @@ public class Device {
     private LocalDateTime lastSyncTime;
     
     @Column
+    private String connectionMode = "AUTO"; // AUTO, PULL, PUSH
+    
+    @Column
     private LocalDateTime createdAt;
     
     @Column
