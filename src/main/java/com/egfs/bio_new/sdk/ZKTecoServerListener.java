@@ -93,7 +93,7 @@ public class ZKTecoServerListener {
             log.info("║                                                                ║");
             log.info("║ NEXT STEPS:                                                    ║");
             log.info("║ 1. Configure your ZKTeco device cloud server settings:        ║");
-            log.info("║    - Server IP: {}                                ║", String.format("%-38s", displayAddress));
+            log.info("║    - Server IP: {}║", String.format("%-47s", displayAddress));
             log.info("║    - Server Port: {}                                         ║", port);
             log.info("║ 2. Enable cloud/push mode on the device                       ║");
             log.info("║ 3. Reboot device to establish connection                      ║");
