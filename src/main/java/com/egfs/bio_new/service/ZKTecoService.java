@@ -95,6 +95,7 @@ public class ZKTecoService {
             } else {
                 device.setConnected(false);
                 deviceRepository.save(device);
+                log.info("Failed to connect in pull mode to device: {} - device may be in push mode, waiting for data...", device.getDeviceName());
                 log.warn("╔════════════════════════════════════════════════════════════════╗");
                 log.warn("║ PULL MODE CONNECTION FAILED                                    ║");
                 log.warn("╠════════════════════════════════════════════════════════════════╣");
