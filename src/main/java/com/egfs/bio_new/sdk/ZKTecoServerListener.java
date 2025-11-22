@@ -160,8 +160,15 @@ public class ZKTecoServerListener {
             socket.setKeepAlive(true);
             socket.setTcpNoDelay(true);
             
-            in = new DataInputStream(socket.getInputStream());
-            out = new DataOutputStream(socket.getOutputStream());
+            // Set socket buffer sizes for better performance
+            socket.setSendBufferSize(8192);
+            socket.setReceiveBufferSize(8192);
+            
+            // Enable SO_LINGER to ensure proper connection closure
+            socket.setSoLinger(true, 5);
+            
+            in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+            out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
             
             log.debug("Device connection established from {}", deviceIp);
             

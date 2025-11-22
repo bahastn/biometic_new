@@ -1,5 +1,8 @@
 package com.egfs.bio_new.sdk;
 
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -7,11 +10,13 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * ZKTeco device communication implementation
@@ -47,121 +52,143 @@ public class ZKTecoDevice {
     
     private static final int USHRT_MAX = 65535;
     private static final int PACKET_HEADER_SIZE = 16; // Size of ZKTeco protocol packet header
-    private static final int CONNECTION_TIMEOUT_MS = 5000; // Socket connection timeout
-    private static final int READ_TIMEOUT_MS = 10000; // Socket read timeout
+    private static final int CONNECTION_TIMEOUT_MS = 8000; // Increased socket connection timeout
+    private static final int READ_TIMEOUT_MS = 15000; // Increased socket read timeout
     private static final int MAX_DATA_SIZE = 5 * 1024 * 1024; // Maximum 5MB data size for safety
+    
+    // Retry configuration
+    private final Retry retry;
     
     public ZKTecoDevice(String ipAddress, int port) {
         this.ipAddress = ipAddress;
         this.port = port;
+        
+        // Configure retry with exponential backoff
+        RetryConfig config = RetryConfig.custom()
+                .maxAttempts(5) // Increased from 3 to 5 attempts
+                .waitDuration(Duration.ofMillis(1000)) // Initial wait of 1 second
+                .intervalFunction(io.github.resilience4j.core.IntervalFunction
+                        .ofExponentialBackoff(1000, 2)) // Exponential backoff with multiplier 2
+                .retryOnException(e -> 
+                    e instanceof IOException || 
+                    e instanceof SocketTimeoutException)
+                .build();
+        
+        RetryRegistry registry = RetryRegistry.of(config);
+        this.retry = registry.retry("zktecoDevice-" + ipAddress + ":" + port);
+        
+        // Add event listeners for better logging
+        retry.getEventPublisher()
+                .onRetry(event -> log.debug("Retry attempt {} for {}:{}", 
+                        event.getNumberOfRetryAttempts(), ipAddress, port))
+                .onError(event -> log.error("All retry attempts failed for {}:{}", 
+                        ipAddress, port))
+                .onSuccess(event -> log.debug("Connection successful for {}:{} after {} attempts", 
+                        ipAddress, port, event.getNumberOfRetryAttempts()));
     }
     
     /**
      * Connect to the device
      */
     public boolean connect() {
-        return connectWithRetry(3, 2000);
+        // Use Resilience4j retry mechanism with exponential backoff
+        try {
+            Supplier<Boolean> connectSupplier = () -> {
+                try {
+                    return attemptConnection();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            };
+            
+            Supplier<Boolean> decoratedSupplier = Retry.decorateSupplier(retry, connectSupplier);
+            return decoratedSupplier.get();
+        } catch (Exception e) {
+            log.error("Failed to connect to device at {}:{} after all retry attempts: {}", 
+                    ipAddress, port, e.getMessage());
+            return false;
+        }
     }
     
     /**
-     * Connect to the device with retry logic
+     * Single connection attempt
      * 
-     * This method intentionally blocks the calling thread during retries,
-     * as it's designed for synchronous connection establishment where the
-     * caller expects the method to either succeed or fail after all attempts.
-     * 
-     * @param maxRetries Maximum number of connection attempts
-     * @param retryDelayMs Delay between retries in milliseconds
      * @return true if connected successfully, false otherwise
+     * @throws IOException if connection fails
      */
-    private boolean connectWithRetry(int maxRetries, long retryDelayMs) {
-        int attempt = 0;
-        
-        while (attempt < maxRetries) {
-            attempt++;
+    private boolean attemptConnection() throws IOException {
+        try {
+            log.info("Attempting connection to ZKTeco device at {}:{}", ipAddress, port);
             
-            try {
-                log.info("Connecting to ZKTeco device at {}:{} (attempt {}/{})", 
-                        ipAddress, port, attempt, maxRetries);
-                
-                // Clean up any existing connection
-                if (socket != null) {
-                    try {
-                        socket.close();
-                    } catch (IOException e) {
-                        log.debug("Error closing existing socket during cleanup: {}", e.getMessage());
-                    }
-                }
-                
-                // Create new socket connection
-                socket = new Socket();
-                socket.connect(new java.net.InetSocketAddress(ipAddress, port), CONNECTION_TIMEOUT_MS);
-                socket.setSoTimeout(READ_TIMEOUT_MS);
-                socket.setKeepAlive(true);
-                socket.setTcpNoDelay(true);
-                
-                out = new DataOutputStream(socket.getOutputStream());
-                in = new DataInputStream(socket.getInputStream());
-                
-                // Send connect command
-                byte[] cmd = createCommand(CMD_CONNECT, new byte[0]);
-                out.write(cmd);
-                out.flush();
-                
-                log.debug("Connect command sent, waiting for reply...");
-                
-                // Read response
-                byte[] reply = readReply();
-                if (reply != null && reply.length >= 6) {
-                    sessionId = ByteBuffer.wrap(reply, 4, 2).order(ByteOrder.LITTLE_ENDIAN).getShort() & 0xFFFF;
-                    log.info("Successfully connected to device at {}:{}. Session ID: {}", 
-                            ipAddress, port, sessionId);
-                    return true;
-                } else {
-                    log.warn("No valid response from device (attempt {}/{})", attempt, maxRetries);
-                }
-                
-            } catch (SocketTimeoutException e) {
-                log.warn("Connection timeout to {}:{} (attempt {}/{}): {}", 
-                        ipAddress, port, attempt, maxRetries, e.getMessage());
-            } catch (java.net.ConnectException e) {
-                log.warn("Connection refused to {}:{} (attempt {}/{}): {}", 
-                        ipAddress, port, attempt, maxRetries, e.getMessage());
-            } catch (java.net.SocketException e) {
-                // SocketException with "reset" message often indicates device is in push mode
-                String message = e.getMessage();
-                if (message != null && message.toLowerCase().contains("reset")) {
-                    log.info("Connection reset from {}:{} (attempt {}/{}) - device may be in push mode", 
-                            ipAddress, port, attempt, maxRetries);
-                } else {
-                    log.warn("Socket error connecting to {}:{} (attempt {}/{}): {}", 
-                            ipAddress, port, attempt, maxRetries, message);
-                }
-            } catch (IOException e) {
-                log.warn("Error connecting to device at {}:{} (attempt {}/{}): {}", 
-                        ipAddress, port, attempt, maxRetries, e.getMessage());
-            }
-            
-            // Disconnect and clean up before retry
-            disconnect();
-            
-            // Wait before retrying (except on last attempt)
-            if (attempt < maxRetries) {
+            // Clean up any existing connection
+            if (socket != null && !socket.isClosed()) {
                 try {
-                    log.debug("Waiting {}ms before retry...", retryDelayMs);
-                    Thread.sleep(retryDelayMs);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.warn("Interrupted while waiting to retry connection - aborting");
-                    // Resources already cleaned up by disconnect() call above
-                    return false;
+                    socket.close();
+                } catch (IOException e) {
+                    log.debug("Error closing existing socket during cleanup: {}", e.getMessage());
                 }
             }
+            
+            // Create new socket connection with improved settings
+            socket = new Socket();
+            socket.connect(new java.net.InetSocketAddress(ipAddress, port), CONNECTION_TIMEOUT_MS);
+            socket.setSoTimeout(READ_TIMEOUT_MS);
+            socket.setKeepAlive(true);
+            socket.setTcpNoDelay(true);
+            
+            // Set socket buffer sizes for better performance
+            socket.setSendBufferSize(8192);
+            socket.setReceiveBufferSize(8192);
+            
+            // Enable SO_LINGER to ensure proper connection closure
+            socket.setSoLinger(true, 5);
+            
+            out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+            in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+            
+            // Send connect command
+            byte[] cmd = createCommand(CMD_CONNECT, new byte[0]);
+            out.write(cmd);
+            out.flush();
+            
+            log.debug("Connect command sent, waiting for reply...");
+            
+            // Read response
+            byte[] reply = readReply();
+            if (reply != null && reply.length >= 6) {
+                sessionId = ByteBuffer.wrap(reply, 4, 2).order(ByteOrder.LITTLE_ENDIAN).getShort() & 0xFFFF;
+                log.info("Successfully connected to device at {}:{}. Session ID: {}", 
+                        ipAddress, port, sessionId);
+                return true;
+            } else {
+                log.warn("No valid response from device at {}:{}", ipAddress, port);
+                disconnect();
+                throw new IOException("Invalid response from device");
+            }
+            
+        } catch (SocketTimeoutException e) {
+            log.warn("Connection timeout to {}:{}: {}", ipAddress, port, e.getMessage());
+            disconnect();
+            throw e;
+        } catch (java.net.ConnectException e) {
+            log.warn("Connection refused to {}:{}: {}", ipAddress, port, e.getMessage());
+            disconnect();
+            throw e;
+        } catch (java.net.SocketException e) {
+            // SocketException with "reset" message often indicates device is in push mode
+            String message = e.getMessage();
+            if (message != null && message.toLowerCase().contains("reset")) {
+                log.info("Connection reset from {}:{} - device may be in push mode", ipAddress, port);
+            } else {
+                log.warn("Socket error connecting to {}:{}: {}", ipAddress, port, message);
+            }
+            disconnect();
+            throw e;
+        } catch (IOException e) {
+            log.warn("Error connecting to device at {}:{}: {}", ipAddress, port, e.getMessage());
+            disconnect();
+            throw e;
         }
-        
-        log.error("Failed to connect to device at {}:{} after {} attempts - device may be in push mode or unreachable", 
-                ipAddress, port, maxRetries);
-        return false;
     }
     
     /**
