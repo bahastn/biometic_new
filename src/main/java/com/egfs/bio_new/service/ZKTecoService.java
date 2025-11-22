@@ -86,8 +86,8 @@ public class ZKTecoService {
                 log.info("╔════════════════════════════════════════════════════════════════╗");
                 log.info("║ PULL MODE CONNECTION SUCCESSFUL                                ║");
                 log.info("╠════════════════════════════════════════════════════════════════╣");
-                log.info("║ Device: {}", String.format("%-55s", device.getDeviceName()) + "║");
-                log.info("║ IP Address: {}", String.format("%-51s", device.getIpAddress() + ":" + device.getPort()) + "║");
+                log.info("║ Device: {}                                                 ║", device.getDeviceName());
+                log.info("║ IP Address: {}:{}                                          ║", device.getIpAddress(), device.getPort());
                 log.info("║ Mode: Pull (Application initiated connection)                 ║");
                 log.info("║ Status: Connected and ready for data sync                     ║");
                 log.info("╚════════════════════════════════════════════════════════════════╝");
@@ -98,8 +98,8 @@ public class ZKTecoService {
                 log.warn("╔════════════════════════════════════════════════════════════════╗");
                 log.warn("║ PULL MODE CONNECTION FAILED                                    ║");
                 log.warn("╠════════════════════════════════════════════════════════════════╣");
-                log.warn("║ Device: {}", String.format("%-55s", device.getDeviceName()) + "║");
-                log.warn("║ IP Address: {}", String.format("%-51s", device.getIpAddress() + ":" + device.getPort()) + "║");
+                log.warn("║ Device: {}                                                 ║", device.getDeviceName());
+                log.warn("║ IP Address: {}:{}                                          ║", device.getIpAddress(), device.getPort());
                 log.warn("║                                                                ║");
                 log.warn("║ PUSH MODE FALLBACK ACTIVE                                      ║");
                 log.warn("║ - Device is registered to receive push data on port 8086      ║");

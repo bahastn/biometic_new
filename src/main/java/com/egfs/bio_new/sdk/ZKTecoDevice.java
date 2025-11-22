@@ -133,7 +133,7 @@ public class ZKTecoDevice {
                 log.error("║ PUSH data to a server instead of accepting PULL requests.     ║");
                 log.error("║                                                                ║");
                 log.error("║ TO FIX THIS:                                                   ║");
-                log.error("║ 1. Configure device to push data to: {}:8086  ║", String.format("%-16s", ipAddress.substring(0, Math.min(ipAddress.length(), 16))));
+                log.error("║ 1. Configure device to push data to server port 8086          ║");
                 log.error("║    (Use device menu: Comm -> Cloud Server)                    ║");
                 log.error("║ 2. OR disable push mode on device and use pull mode           ║");
                 log.error("║ 3. Verify ZKTeco push server is running on port 8086          ║");
@@ -154,12 +154,10 @@ public class ZKTecoDevice {
      * Performs a basic network connectivity test before attempting full connection
      */
     private boolean isDeviceReachable() {
-        try {
-            // Try to create a socket connection with a short timeout (2 seconds)
-            // This is just a basic reachability test
-            Socket testSocket = new Socket();
+        // Try to create a socket connection with a short timeout (2 seconds)
+        // This is just a basic reachability test
+        try (Socket testSocket = new Socket()) {
             testSocket.connect(new java.net.InetSocketAddress(ipAddress, port), 2000);
-            testSocket.close();
             log.debug("Device at {}:{} is reachable", ipAddress, port);
             return true;
         } catch (java.net.ConnectException e) {
