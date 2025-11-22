@@ -1,5 +1,6 @@
 package com.egfs.bio_new.controller;
 
+import com.egfs.bio_new.entity.ConnectionMode;
 import com.egfs.bio_new.entity.Device;
 import com.egfs.bio_new.entity.Employee;
 import com.egfs.bio_new.service.DeviceService;
@@ -44,7 +45,7 @@ public class SyncController {
                     .orElseThrow(() -> new RuntimeException("Device not found"));
             
             // Check if device is in PUSH mode
-            if (device.getConnectionMode() != null && device.getConnectionMode().toString().equals("PUSH")) {
+            if (device.getConnectionMode() == ConnectionMode.PUSH) {
                 redirectAttributes.addFlashAttribute("errorMessage", 
                         "Cannot push employee to PUSH mode device '" + device.getDeviceName() + "'. " +
                         "Employee data must be configured directly on the device. " +
@@ -76,7 +77,7 @@ public class SyncController {
                     .orElseThrow(() -> new RuntimeException("Device not found"));
             
             // Check if device is in PUSH mode
-            if (device.getConnectionMode() != null && device.getConnectionMode().toString().equals("PUSH")) {
+            if (device.getConnectionMode() == ConnectionMode.PUSH) {
                 redirectAttributes.addFlashAttribute("errorMessage", 
                         "Cannot push employees to PUSH mode device '" + device.getDeviceName() + "'. " +
                         "Employee data must be configured directly on the device. " +
@@ -110,7 +111,7 @@ public class SyncController {
                     .orElseThrow(() -> new RuntimeException("Device not found"));
             
             // Check if device is in PUSH mode
-            if (device.getConnectionMode() != null && device.getConnectionMode().toString().equals("PUSH")) {
+            if (device.getConnectionMode() == ConnectionMode.PUSH) {
                 redirectAttributes.addFlashAttribute("errorMessage", 
                         "Cannot sync from PUSH mode device '" + device.getDeviceName() + "'. " +
                         "This device automatically pushes data to the server in real-time. " +
