@@ -72,13 +72,36 @@ public class ZKTecoServerListener {
             running = true;
             executorService = Executors.newCachedThreadPool();
             
-            log.info("ZKTeco server listener started on port {}", port);
+            log.info("╔════════════════════════════════════════════════════════════════╗");
+            log.info("║ ZKTeco PUSH MODE SERVER STARTED                                ║");
+            log.info("╠════════════════════════════════════════════════════════════════╣");
+            log.info("║ Listening Port: {}", String.format("%-47s", port) + "║");
+            log.info("║ Status: Ready to accept device connections                    ║");
+            log.info("║                                                                ║");
+            log.info("║ NEXT STEPS:                                                    ║");
+            log.info("║ 1. Configure your ZKTeco device cloud server settings:        ║");
+            log.info("║    - Server IP: <your-server-ip>                              ║");
+            log.info("║    - Server Port: {}                                         ║", String.format("%-44s", port) + "║");
+            log.info("║ 2. Enable cloud/push mode on the device                       ║");
+            log.info("║ 3. Reboot device to establish connection                      ║");
+            log.info("║                                                                ║");
+            log.info("║ See PUSH_MODE_GUIDE.md for detailed instructions              ║");
+            log.info("╚════════════════════════════════════════════════════════════════╝");
             
             // Start accepting connections in a separate thread
             executorService.submit(this::acceptConnections);
             
         } catch (IOException e) {
             log.error("Failed to start server listener on port {}", port, e);
+            log.error("╔════════════════════════════════════════════════════════════════╗");
+            log.error("║ PUSH MODE SERVER FAILED TO START                               ║");
+            log.error("╠════════════════════════════════════════════════════════════════╣");
+            log.error("║ Port {} may already be in use                              ║", String.format("%-47s", port) + "║");
+            log.error("║ Please check:                                                  ║");
+            log.error("║ 1. No other service is using port {}                       ║", String.format("%-44s", port) + "║");
+            log.error("║ 2. Firewall allows port {} (run: netstat -an | grep {})║", String.format("%-39s", port), String.format("%-5s", port) + "║");
+            log.error("║ 3. Application has permission to bind to port                 ║");
+            log.error("╚════════════════════════════════════════════════════════════════╝");
             running = false;
         }
     }
@@ -193,7 +216,14 @@ public class ZKTecoServerListener {
                         case CMD_CONNECT:
                             // Device is connecting - send ACK
                             sendAck(out, sessionId, replyNumber++, CMD_ACK_OK);
-                            log.info("Device {} connected with session ID {}", deviceIp, sessionId);
+                            log.info("╔════════════════════════════════════════════════════════════════╗");
+                            log.info("║ PUSH MODE CONNECTION ESTABLISHED                               ║");
+                            log.info("╠════════════════════════════════════════════════════════════════╣");
+                            log.info("║ Device IP: {}", String.format("%-52s", deviceIp) + "║");
+                            log.info("║ Session ID: {}", String.format("%-51s", sessionId) + "║");
+                            log.info("║ Mode: Push (Device initiated connection)                      ║");
+                            log.info("║ Status: Ready to receive attendance data                      ║");
+                            log.info("╚════════════════════════════════════════════════════════════════╝");
                             break;
                             
                         case CMD_EXIT:
