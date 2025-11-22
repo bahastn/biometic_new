@@ -60,6 +60,13 @@ public class ZKTecoServerListener {
      * Start the server listener on the specified port
      */
     public void start(int port) {
+        start(port, null);
+    }
+    
+    /**
+     * Start the server listener on the specified port with server address
+     */
+    public void start(int port, String serverAddress) {
         if (running) {
             log.warn("Server listener already running on port {}", this.port);
             return;
@@ -72,6 +79,12 @@ public class ZKTecoServerListener {
             running = true;
             executorService = Executors.newCachedThreadPool();
             
+            // Determine the display address
+            String displayAddress = serverAddress;
+            if (displayAddress == null || displayAddress.isEmpty() || "0.0.0.0".equals(displayAddress)) {
+                displayAddress = "<your-server-ip>";
+            }
+            
             log.info("╔════════════════════════════════════════════════════════════════╗");
             log.info("║ ZKTeco PUSH MODE SERVER STARTED                                ║");
             log.info("╠════════════════════════════════════════════════════════════════╣");
@@ -80,7 +93,7 @@ public class ZKTecoServerListener {
             log.info("║                                                                ║");
             log.info("║ NEXT STEPS:                                                    ║");
             log.info("║ 1. Configure your ZKTeco device cloud server settings:        ║");
-            log.info("║    - Server IP: <your-server-ip>                              ║");
+            log.info("║    - Server IP: {}                                ║", String.format("%-38s", displayAddress));
             log.info("║    - Server Port: {}                                         ║", port);
             log.info("║ 2. Enable cloud/push mode on the device                       ║");
             log.info("║ 3. Reboot device to establish connection                      ║");

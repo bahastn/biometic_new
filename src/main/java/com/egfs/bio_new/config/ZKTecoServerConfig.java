@@ -28,11 +28,14 @@ public class ZKTecoServerConfig implements ApplicationRunner {
     @Value("${zkteco.server.port:8086}")
     private int serverPort;
     
+    @Value("${server.address:}")
+    private String serverAddress;
+    
     @Override
     public void run(ApplicationArguments args) {
         if (serverEnabled) {
             try {
-                serverListener.start(serverPort);
+                serverListener.start(serverPort, serverAddress);
                 // Server listener now provides its own detailed startup message
             } catch (Exception e) {
                 log.error("Failed to start ZKTeco server listener", e);
@@ -62,15 +65,6 @@ public class ZKTecoServerConfig implements ApplicationRunner {
         if (serverListener.isRunning()) {
             serverListener.stop();
             log.info("ZKTeco server listener stopped");
-        }
-    }
-    
-    private String getServerAddress() {
-        // Try to get the server address from properties
-        try {
-            return System.getProperty("server.address", "localhost");
-        } catch (Exception e) {
-            return "localhost";
         }
     }
 }
