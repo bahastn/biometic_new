@@ -94,6 +94,9 @@ See [PUSH_MODE_GUIDE.md](PUSH_MODE_GUIDE.md) for detailed instructions.
 Since the web UI may not yet have the connection mode field, you can set it directly in the database:
 
 ```sql
+-- Note: The database column is 'connection_mode' (snake_case)
+-- Valid values are: 'AUTO', 'PULL', 'PUSH' (case-sensitive)
+
 -- Set device to AUTO mode (default)
 UPDATE devices SET connection_mode = 'AUTO' WHERE id = 1;
 

@@ -1,6 +1,7 @@
 package com.egfs.bio_new.service;
 
 import com.egfs.bio_new.entity.AttendanceLog;
+import com.egfs.bio_new.entity.ConnectionMode;
 import com.egfs.bio_new.entity.Device;
 import com.egfs.bio_new.entity.Employee;
 import com.egfs.bio_new.repository.AttendanceLogRepository;
@@ -74,9 +75,9 @@ public class ZKTecoService {
     public boolean connectToDevice(Device device) {
         try {
             // Get connection mode (default to AUTO if not set)
-            String connectionMode = device.getConnectionMode();
-            if (connectionMode == null || connectionMode.isEmpty()) {
-                connectionMode = "AUTO";
+            ConnectionMode connectionMode = device.getConnectionMode();
+            if (connectionMode == null) {
+                connectionMode = ConnectionMode.AUTO;
                 device.setConnectionMode(connectionMode);
             }
             
@@ -87,7 +88,7 @@ public class ZKTecoService {
             registerDeviceWithServerListener(device);
             
             // If device is configured as PUSH-only, skip pull mode attempt
-            if ("PUSH".equalsIgnoreCase(connectionMode)) {
+            if (connectionMode == ConnectionMode.PUSH) {
                 log.info("╔════════════════════════════════════════════════════════════════╗");
                 log.info("║ PUSH MODE CONFIGURED                                           ║");
                 log.info("╠════════════════════════════════════════════════════════════════╣");
@@ -118,8 +119,8 @@ public class ZKTecoService {
                 device.setConnected(true);
                 device.setLastSyncTime(LocalDateTime.now());
                 // Update mode to PULL if it was AUTO and pull succeeded
-                if ("AUTO".equalsIgnoreCase(connectionMode)) {
-                    device.setConnectionMode("PULL");
+                if (connectionMode == ConnectionMode.AUTO) {
+                    device.setConnectionMode(ConnectionMode.PULL);
                 }
                 deviceRepository.save(device);
                 log.info("╔════════════════════════════════════════════════════════════════╗");
@@ -134,14 +135,14 @@ public class ZKTecoService {
             } else {
                 device.setConnected(false);
                 // Update mode to PUSH if it was AUTO and pull failed
-                if ("AUTO".equalsIgnoreCase(connectionMode)) {
-                    device.setConnectionMode("PUSH");
+                if (connectionMode == ConnectionMode.AUTO) {
+                    device.setConnectionMode(ConnectionMode.PUSH);
                     log.info("Auto-detected device mode as PUSH for device: {}", device.getDeviceName());
                 }
                 deviceRepository.save(device);
                 
                 // Less alarming message for AUTO mode that detected PUSH
-                if ("AUTO".equalsIgnoreCase(connectionMode)) {
+                if (connectionMode == ConnectionMode.AUTO) {
                     log.info("╔════════════════════════════════════════════════════════════════╗");
                     log.info("║ PUSH MODE DETECTED                                             ║");
                     log.info("╠════════════════════════════════════════════════════════════════╣");
